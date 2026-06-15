@@ -1,5 +1,7 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+"use client";
+
 import { useState } from "react";
+import Link from "next/link";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,17 +9,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Flame, Loader2, Mail, ArrowLeft, CheckCircle2 } from "lucide-react";
 
-export const Route = createFileRoute("/forgot-password")({
-  head: () => ({
-    meta: [
-      { title: "Forgot Password — LeadCraft AI" },
-      { name: "robots", content: "noindex, nofollow" },
-    ],
-  }),
-  component: ForgotPasswordPage,
-});
-
-function ForgotPasswordPage() {
+export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
@@ -43,7 +35,7 @@ function ForgotPasswordPage() {
       <div className="absolute inset-0 grid-bg pointer-events-none" />
 
       <header className="relative z-10 p-4 sm:p-6">
-        <Link to="/" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition">
+        <Link href="/" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition">
           <Flame className="size-4 text-accent" />
           <span className="font-medium text-foreground">LeadCraft AI</span>
         </Link>
@@ -71,7 +63,7 @@ function ForgotPasswordPage() {
                 </button>.
               </p>
               <Link
-                to="/auth"
+                href="/auth"
                 className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition"
               >
                 <ArrowLeft className="size-3.5" /> Back to sign in
@@ -115,7 +107,7 @@ function ForgotPasswordPage() {
 
                 <div className="text-center">
                   <Link
-                    to="/auth"
+                    href="/auth"
                     className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition"
                   >
                     <ArrowLeft className="size-3.5" /> Back to sign in

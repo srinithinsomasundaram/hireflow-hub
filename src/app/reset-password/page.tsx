@@ -1,5 +1,7 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+"use client";
+
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,19 +9,9 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Flame, Loader2, KeyRound, ArrowLeft, CheckCircle2, Eye, EyeOff } from "lucide-react";
 
-export const Route = createFileRoute("/reset-password")({
-  head: () => ({
-    meta: [
-      { title: "Reset Password — LeadCraft AI" },
-      { name: "robots", content: "noindex, nofollow" },
-    ],
-  }),
-  component: ResetPasswordPage,
-});
-
 type PageState = "loading" | "ready" | "done" | "invalid";
 
-function ResetPasswordPage() {
+export default function ResetPasswordPage() {
   const [pageState, setPageState] = useState<PageState>("loading");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -27,8 +19,6 @@ function ResetPasswordPage() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // Supabase fires PASSWORD_RECOVERY when the user arrives via the reset link.
-  // The hash fragment is automatically consumed and a session is set.
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === "PASSWORD_RECOVERY") {
@@ -36,13 +26,10 @@ function ResetPasswordPage() {
       }
     });
 
-    // Also check if there's already an active session from the hash (in case
-    // the event fired before this component mounted).
     supabase.auth.getSession().then(({ data }) => {
       if (data.session) {
         setPageState("ready");
       } else {
-        // Give it 3 seconds for the hash to be consumed, then show invalid.
         const timer = setTimeout(() => setPageState("invalid"), 3000);
         return () => clearTimeout(timer);
       }
@@ -66,7 +53,6 @@ function ResetPasswordPage() {
       const { error } = await supabase.auth.updateUser({ password });
       if (error) throw error;
       setPageState("done");
-      // Sign out so they log in fresh with new password
       await supabase.auth.signOut();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to reset password");
@@ -88,7 +74,7 @@ function ResetPasswordPage() {
       <div className="min-h-screen flex flex-col bg-background relative overflow-hidden">
         <div className="absolute inset-0 grid-bg pointer-events-none" />
         <header className="relative z-10 p-4 sm:p-6">
-          <Link to="/" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition">
+          <Link href="/" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition">
             <Flame className="size-4 text-accent" />
             <span className="font-medium text-foreground">LeadCraft AI</span>
           </Link>
@@ -103,7 +89,7 @@ function ResetPasswordPage() {
               This reset link has already been used or has expired. Request a new one below.
             </p>
             <Link
-              to="/forgot-password"
+              href="/forgot-password"
               className="inline-flex items-center gap-1.5 text-sm font-medium text-accent hover:underline"
             >
               Request a new reset link
@@ -119,7 +105,7 @@ function ResetPasswordPage() {
       <div className="min-h-screen flex flex-col bg-background relative overflow-hidden">
         <div className="absolute inset-0 grid-bg pointer-events-none" />
         <header className="relative z-10 p-4 sm:p-6">
-          <Link to="/" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition">
+          <Link href="/" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition">
             <Flame className="size-4 text-accent" />
             <span className="font-medium text-foreground">LeadCraft AI</span>
           </Link>
@@ -134,7 +120,7 @@ function ResetPasswordPage() {
               Your password has been changed successfully. Sign in with your new password.
             </p>
             <Button asChild className="bg-primary text-primary-foreground hover:bg-primary/90 h-11 px-6 font-medium">
-              <Link to="/auth">Sign in now</Link>
+              <Link href="/auth">Sign in now</Link>
             </Button>
           </div>
         </main>
@@ -142,13 +128,12 @@ function ResetPasswordPage() {
     );
   }
 
-  // pageState === "ready"
   return (
     <div className="min-h-screen flex flex-col bg-background relative overflow-hidden">
       <div className="absolute inset-0 grid-bg pointer-events-none" />
 
       <header className="relative z-10 p-4 sm:p-6">
-        <Link to="/" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition">
+        <Link href="/" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition">
           <Flame className="size-4 text-accent" />
           <span className="font-medium text-foreground">LeadCraft AI</span>
         </Link>
@@ -220,7 +205,6 @@ function ResetPasswordPage() {
                 )}
               </div>
 
-              {/* Strength indicator */}
               <div className="space-y-1">
                 <div className="flex gap-1">
                   {[6, 10, 14].map((threshold) => (
@@ -254,7 +238,7 @@ function ResetPasswordPage() {
 
             <div className="mt-4 text-center">
               <Link
-                to="/auth"
+                href="/auth"
                 className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition"
               >
                 <ArrowLeft className="size-3.5" /> Back to sign in

@@ -1,23 +1,13 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState, useEffect } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
+"use client";
+
+import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 import { getOnboardingStatus, saveOnboarding } from "@/lib/onboarding.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Flame, ArrowLeft, Loader2, Check, User, Building2, Briefcase } from "lucide-react";
-
-export const Route = createFileRoute("/_authenticated/settings")({
-  head: () => ({
-    meta: [
-      { title: "Business Profile — LeadCraft AI Settings" },
-      { name: "robots", content: "noindex, nofollow" },
-    ],
-  }),
-  component: SettingsPage,
-});
 
 const NICHES = [
   "Web design & development",
@@ -32,54 +22,49 @@ const NICHES = [
   "Other",
 ];
 
-function SettingsPage() {
-  const getStatusFn = useServerFn(getOnboardingStatus);
-  const saveFn = useServerFn(saveOnboarding);
-
+export default function SettingsPage() {
   const [fullName, setFullName] = useState("");
   const [agencyName, setAgencyName] = useState("");
   const [serviceNiche, setServiceNiche] = useState("");
   const [customNiche, setCustomNiche] = useState("");
   const [saved, setSaved] = useState(false);
-
-  const profile = useQuery({
-    queryKey: ["onboarding-status"],
-    queryFn: () => getStatusFn(),
-  });
+  const [profileLoading, setProfileLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (!profile.data) return;
-    setFullName(profile.data.fullName ?? "");
-    setAgencyName(profile.data.agencyName ?? "");
-    const existing = profile.data.serviceNiche ?? "";
-    if (NICHES.includes(existing)) {
-      setServiceNiche(existing);
-    } else if (existing) {
-      setServiceNiche("Other");
-      setCustomNiche(existing);
-    }
-  }, [profile.data]);
+    getOnboardingStatus()
+      .then((data) => {
+        setFullName(data.fullName ?? "");
+        setAgencyName(data.agencyName ?? "");
+        const existing = data.serviceNiche ?? "";
+        if (NICHES.includes(existing)) {
+          setServiceNiche(existing);
+        } else if (existing) {
+          setServiceNiche("Other");
+          setCustomNiche(existing);
+        }
+      })
+      .catch(console.error)
+      .finally(() => setProfileLoading(false));
+  }, []);
 
-  const save = useMutation({
-    mutationFn: () =>
-      saveFn({
-        data: {
-          fullName: fullName.trim(),
-          agencyName: agencyName.trim(),
-          serviceNiche: serviceNiche === "Other" ? customNiche.trim() : serviceNiche,
-        },
-      }),
-    onSuccess: () => {
+  const onSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      await saveOnboarding({
+        fullName: fullName.trim(),
+        agencyName: agencyName.trim(),
+        serviceNiche: serviceNiche === "Other" ? customNiche.trim() : serviceNiche,
+      });
       setSaved(true);
       toast.success("Settings saved.");
       setTimeout(() => setSaved(false), 2500);
-    },
-    onError: (err: Error) => toast.error(err.message || "Failed to save"),
-  });
-
-  const onSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    save.mutate();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to save");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -87,7 +72,7 @@ function SettingsPage() {
       <header className="sticky top-0 z-20 border-b border-border bg-background/95 backdrop-blur">
         <div className="max-w-2xl mx-auto px-4 sm:px-6 h-14 flex items-center gap-4">
           <Link
-            to="/dashboard"
+            href="/dashboard"
             className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition"
           >
             <ArrowLeft className="size-4" /> Dashboard
@@ -111,7 +96,7 @@ function SettingsPage() {
           </p>
         </div>
 
-        {profile.isLoading ? (
+        {profileLoading ? (
           <div className="flex items-center gap-2 py-12 justify-center text-muted-foreground text-sm">
             <Loader2 className="size-4 animate-spin" /> Loading…
           </div>
@@ -194,10 +179,10 @@ function SettingsPage() {
             <div className="mt-5 flex items-center gap-3">
               <Button
                 type="submit"
-                disabled={save.isPending}
+                disabled={saving}
                 className="bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-5 font-medium"
               >
-                {save.isPending ? (
+                {saving ? (
                   <Loader2 className="size-4 animate-spin" />
                 ) : saved ? (
                   <><Check className="size-4 mr-1.5" /> Saved</>
@@ -206,7 +191,7 @@ function SettingsPage() {
                 )}
               </Button>
               <Link
-                to="/dashboard"
+                href="/dashboard"
                 className="text-sm text-muted-foreground hover:text-foreground transition"
               >
                 Cancel

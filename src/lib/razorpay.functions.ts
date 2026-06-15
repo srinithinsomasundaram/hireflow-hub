@@ -1,9 +1,11 @@
-import { createServerFn } from "@tanstack/react-start";
+"use server";
+
 import { createClient } from "@supabase/supabase-js";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
+import { cookies } from "next/headers";
 import crypto from "crypto";
 import Razorpay from "razorpay";
+import type { Database } from "@/integrations/supabase/types";
 
 const PLANS: Record<string, { amount: number; label: string }> = {
   pro: { amount: 19900, label: "LeadCraft Pro — ₹199/mo" },
@@ -17,78 +19,108 @@ function razorpayClient() {
   return new Razorpay({ key_id, key_secret });
 }
 
-export const createOrder = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((raw: unknown) =>
-    z.object({ plan: z.enum(["pro", "agency"]) }).parse(raw),
-  )
-  .handler(async ({ data }) => {
-    const rzp = razorpayClient();
-    const plan = PLANS[data.plan];
+async function getAuthenticatedUserId(): Promise<string> {
+  const cookieStore = await cookies();
+  const supabaseUrl = process.env.SUPABASE_URL!;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE!;
 
-    let order;
+  let token: string | undefined;
+  const allCookies = cookieStore.getAll();
+  const authCookie = allCookies.find(c => c.name.includes("-auth-token") && c.name.startsWith("sb-"));
+  if (authCookie) {
     try {
-      order = await rzp.orders.create({
-        amount: plan.amount,
-        currency: "INR",
-        receipt: `lc_${data.plan}_${Date.now()}`,
-        notes: { plan: data.plan },
-      });
-    } catch (err) {
-      console.error("[Razorpay] createOrder failed:", JSON.stringify(err, null, 2));
-      const e = err as { error?: { code?: string; description?: string; reason?: string } };
-      throw new Error(
-        `Razorpay order error: ${e?.error?.description ?? e?.error?.reason ?? JSON.stringify(err)}`
-      );
+      const parsed = JSON.parse(authCookie.value);
+      token = Array.isArray(parsed) ? parsed[0] : parsed.access_token;
+    } catch {
+      token = authCookie.value;
     }
+  }
+  if (!token) {
+    token = cookieStore.get("sb-access-token")?.value || cookieStore.get("supabase-auth-token")?.value;
+  }
+  if (!token) throw new Error("Unauthorized: No session token found");
 
-    console.log("[Razorpay] order created:", order.id, "key:", process.env.RAZORPAY_KEY_ID);
-
-    return {
-      orderId: order.id,
-      amount: order.amount,
-      currency: order.currency,
-      plan: data.plan,
-      label: plan.label,
-      keyId: process.env.RAZORPAY_KEY_ID!,
-    };
+  const admin = createClient<Database>(supabaseUrl, serviceRoleKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
   });
+  const { data: { user }, error } = await admin.auth.getUser(token);
+  if (error || !user) throw new Error("Unauthorized: Invalid or expired session");
+  return user.id;
+}
 
-export const verifyAndActivate = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((raw: unknown) =>
-    z.object({
-      razorpay_order_id: z.string(),
-      razorpay_payment_id: z.string(),
-      razorpay_signature: z.string(),
-    }).parse(raw),
-  )
-  .handler(async ({ context, data }) => {
-    const keySecret = process.env.RAZORPAY_KEY_SECRET;
-    if (!keySecret) throw new Error("Razorpay keys not configured");
+export async function createOrder(input: { plan: "pro" | "agency" }) {
+  const { plan } = z.object({ plan: z.enum(["pro", "agency"]) }).parse(input);
+  await getAuthenticatedUserId();
 
-    const expected = crypto
-      .createHmac("sha256", keySecret)
-      .update(`${data.razorpay_order_id}|${data.razorpay_payment_id}`)
-      .digest("hex");
+  const rzp = razorpayClient();
+  const planDef = PLANS[plan];
 
-    console.log("[Razorpay] verifying signature — expected:", expected, "got:", data.razorpay_signature);
-    if (expected !== data.razorpay_signature) {
-      console.error("[Razorpay] signature mismatch! order:", data.razorpay_order_id, "payment:", data.razorpay_payment_id);
-      throw new Error("Payment verification failed — signature mismatch");
-    }
-
-    const admin = createClient(
-      process.env.SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE!,
-      { auth: { persistSession: false, autoRefreshToken: false } },
+  let order;
+  try {
+    order = await rzp.orders.create({
+      amount: planDef.amount,
+      currency: "INR",
+      receipt: `lc_${plan}_${Date.now()}`,
+      notes: { plan },
+    });
+  } catch (err) {
+    console.error("[Razorpay] createOrder failed:", JSON.stringify(err, null, 2));
+    const e = err as { error?: { code?: string; description?: string; reason?: string } };
+    throw new Error(
+      `Razorpay order error: ${e?.error?.description ?? e?.error?.reason ?? JSON.stringify(err)}`
     );
+  }
 
-    const { error } = await admin
-      .from("profiles")
-      .update({ is_premium: true })
-      .eq("id", context.userId);
+  console.log("[Razorpay] order created:", order.id, "key:", process.env.RAZORPAY_KEY_ID);
 
-    if (error) throw new Error(error.message);
-    return { ok: true };
-  });
+  return {
+    orderId: order.id,
+    amount: order.amount,
+    currency: order.currency,
+    plan,
+    label: planDef.label,
+    keyId: process.env.RAZORPAY_KEY_ID!,
+  };
+}
+
+export async function verifyAndActivate(input: {
+  razorpay_order_id: string;
+  razorpay_payment_id: string;
+  razorpay_signature: string;
+}) {
+  const data = z.object({
+    razorpay_order_id: z.string(),
+    razorpay_payment_id: z.string(),
+    razorpay_signature: z.string(),
+  }).parse(input);
+
+  const userId = await getAuthenticatedUserId();
+
+  const keySecret = process.env.RAZORPAY_KEY_SECRET;
+  if (!keySecret) throw new Error("Razorpay keys not configured");
+
+  const expected = crypto
+    .createHmac("sha256", keySecret)
+    .update(`${data.razorpay_order_id}|${data.razorpay_payment_id}`)
+    .digest("hex");
+
+  console.log("[Razorpay] verifying signature — expected:", expected, "got:", data.razorpay_signature);
+  if (expected !== data.razorpay_signature) {
+    console.error("[Razorpay] signature mismatch! order:", data.razorpay_order_id, "payment:", data.razorpay_payment_id);
+    throw new Error("Payment verification failed — signature mismatch");
+  }
+
+  const admin = createClient(
+    process.env.SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE!,
+    { auth: { persistSession: false, autoRefreshToken: false } },
+  );
+
+  const { error } = await admin
+    .from("profiles")
+    .update({ is_premium: true })
+    .eq("id", userId);
+
+  if (error) throw new Error(error.message);
+  return { ok: true };
+}

@@ -1,7 +1,8 @@
-import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
+"use client";
+
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   generatePitch,
   getMyGenerations,
@@ -37,30 +38,18 @@ import {
   Check,
   Crown,
   Pencil,
-  X,
   Shield,
   Settings,
 } from "lucide-react";
 
-const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL as string | undefined;
-const RZP_KEY = import.meta.env.VITE_RAZORPAY_KEY_ID as string | undefined;
+const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL as string | undefined;
+const RZP_KEY = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID as string | undefined;
 
 declare global {
   interface Window {
     Razorpay: new (opts: object) => { open(): void };
   }
 }
-
-export const Route = createFileRoute("/_authenticated/dashboard")({
-  head: () => ({
-    meta: [
-      { title: "Dashboard — LeadCraft AI" },
-      { name: "description", content: "Generate and manage your personalised cold pitches — email, WhatsApp, and LinkedIn — all in one place." },
-      { name: "robots", content: "noindex, nofollow" },
-    ],
-  }),
-  component: Dashboard,
-});
 
 type HistoryRow = {
   id: string;
@@ -70,6 +59,15 @@ type HistoryRow = {
   observed_gaps: string | null;
   generated_pitch: string;
   created_at: string;
+};
+
+type StatusData = {
+  count: number;
+  limit: number;
+  isPremium: boolean;
+  email: string | null;
+  fullName: string | null;
+  agencyName: string | null;
 };
 
 function parsePitch(raw: string, businessName: string): Pitch {
@@ -89,16 +87,8 @@ function parsePitch(raw: string, businessName: string): Pitch {
   };
 }
 
-function Dashboard() {
-  const navigate = useNavigate();
-  const qc = useQueryClient();
-  const generateFn = useServerFn(generatePitch);
-  const listFn = useServerFn(getMyGenerations);
-  const statusFn = useServerFn(getMyStatus);
-  const deleteFn = useServerFn(deleteGeneration);
-  const getPlansFn = useServerFn(getPlans);
-  const createOrderFn = useServerFn(createOrder);
-  const verifyFn = useServerFn(verifyAndActivate);
+export default function Dashboard() {
+  const router = useRouter();
 
   const [businessName, setBusinessName] = useState("");
   const [niche, setNiche] = useState("");
@@ -107,59 +97,61 @@ function Dashboard() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
 
-  const status = useQuery({ queryKey: ["status"], queryFn: () => statusFn() });
-  const history = useQuery({ queryKey: ["history"], queryFn: () => listFn() });
-  const plansQuery = useQuery({ queryKey: ["plans"], queryFn: () => getPlansFn() });
+  const [status, setStatus] = useState<StatusData | null>(null);
+  const [statusLoading, setStatusLoading] = useState(true);
+  const [history, setHistory] = useState<HistoryRow[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(true);
+  const [plans, setPlans] = useState<PlanDef[]>([]);
+  const [generating, setGenerating] = useState(false);
+  const [deleting, setDeleting] = useState<string | null>(null);
+
+  const fetchStatus = useCallback(async () => {
+    try {
+      const data = await getMyStatus();
+      setStatus(data);
+    } catch (err) {
+      console.error("fetchStatus error:", err);
+    } finally {
+      setStatusLoading(false);
+    }
+  }, []);
+
+  const fetchHistory = useCallback(async () => {
+    try {
+      const data = await getMyGenerations();
+      setHistory(data);
+    } catch (err) {
+      console.error("fetchHistory error:", err);
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, []);
+
+  const fetchPlans = useCallback(async () => {
+    try {
+      const data = await getPlans();
+      setPlans(data);
+    } catch (err) {
+      console.error("fetchPlans error:", err);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchStatus();
+    fetchHistory();
+    fetchPlans();
+  }, [fetchStatus, fetchHistory, fetchPlans]);
 
   const selected: HistoryRow | undefined = useMemo(
-    () => history.data?.find((r) => r.id === selectedId),
-    [history.data, selectedId],
+    () => history.find((r) => r.id === selectedId),
+    [history, selectedId],
   );
   const selectedPitch = selected
     ? parsePitch(selected.generated_pitch, selected.business_name)
     : null;
 
   const limitHit =
-    status.data && !status.data.isPremium && status.data.count >= status.data.limit;
-
-  const mutate = useMutation({
-    mutationFn: (d: {
-      businessName: string;
-      niche: string;
-      location: string;
-      observedGaps: string;
-    }) => generateFn({ data: d }),
-    onSuccess: (row) => {
-      qc.invalidateQueries({ queryKey: ["history"] });
-      qc.invalidateQueries({ queryKey: ["status"] });
-      setSelectedId(row.id);
-      toast.success("Pitch generated");
-    },
-    onError: (err: Error) => {
-      if (err.message.includes("LIMIT_EXCEEDED")) {
-        toast.error("Free limit reached. Upgrade to keep generating.");
-      } else if (err.message.includes("CREDITS_EXHAUSTED")) {
-        toast.error("AI credits exhausted. Try again later.");
-      } else if (err.message.includes("RATE_LIMITED")) {
-        toast.error("Rate limited. Try again in a moment.");
-      } else if (err.message.includes("INVALID_KEY")) {
-        toast.error("Invalid Gemini API key — check GEMINI_API_KEY in .env");
-      } else if (err.message.includes("Unauthorized")) {
-        toast.error("Session expired — please sign in again.");
-      } else {
-        toast.error(err.message.replace("AI_FAILED: ", "") || "Generation failed.");
-      }
-    },
-  });
-
-  const del = useMutation({
-    mutationFn: (id: string) => deleteFn({ data: { id } }),
-    onSuccess: (_, id) => {
-      qc.invalidateQueries({ queryKey: ["history"] });
-      qc.invalidateQueries({ queryKey: ["status"] });
-      if (selectedId === id) setSelectedId(null);
-    },
-  });
+    status && !status.isPremium && status.count >= status.limit;
 
   // Auto-generate pitch from landing page try-it form
   const autoRan = useRef(false);
@@ -179,24 +171,74 @@ function Dashboard() {
       setLocation(loc);
       setObservedGaps(gaps);
       toast.success("Generating your pitch…");
-      mutate.mutate({ businessName: biz, niche: "", location: loc, observedGaps: gaps || "no obvious online presence" });
+      setGenerating(true);
+      generatePitch({ businessName: biz, niche: "", location: loc, observedGaps: gaps || "no obvious online presence" })
+        .then((row) => {
+          setHistory((prev) => [row, ...prev]);
+          setSelectedId(row.id);
+          fetchStatus();
+          toast.success("Pitch generated");
+        })
+        .catch((err: Error) => {
+          handleGenerateError(err);
+        })
+        .finally(() => setGenerating(false));
     } catch { /* ignore */ }
-  }, [mutate]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const onSubmit = (e: React.FormEvent) => {
+  function handleGenerateError(err: Error) {
+    if (err.message.includes("LIMIT_EXCEEDED")) {
+      toast.error("Free limit reached. Upgrade to keep generating.");
+    } else if (err.message.includes("CREDITS_EXHAUSTED")) {
+      toast.error("AI credits exhausted. Try again later.");
+    } else if (err.message.includes("RATE_LIMITED")) {
+      toast.error("Rate limited. Try again in a moment.");
+    } else if (err.message.includes("INVALID_KEY")) {
+      toast.error("Invalid Gemini API key — check GEMINI_API_KEY in .env");
+    } else if (err.message.includes("Unauthorized")) {
+      toast.error("Session expired — please sign in again.");
+    } else {
+      toast.error(err.message.replace("AI_FAILED: ", "") || "Generation failed.");
+    }
+  }
+
+  const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (limitHit) {
       toast.error("Free limit reached.");
       return;
     }
-    mutate.mutate({ businessName, niche, location, observedGaps });
+    setGenerating(true);
+    try {
+      const row = await generatePitch({ businessName, niche, location, observedGaps });
+      setHistory((prev) => [row, ...prev]);
+      setSelectedId(row.id);
+      fetchStatus();
+      toast.success("Pitch generated");
+    } catch (err) {
+      handleGenerateError(err as Error);
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    setDeleting(id);
+    try {
+      await deleteGeneration({ id });
+      setHistory((prev) => prev.filter((r) => r.id !== id));
+      fetchStatus();
+      if (selectedId === id) setSelectedId(null);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Delete failed");
+    } finally {
+      setDeleting(null);
+    }
   };
 
   const signOut = async () => {
-    await qc.cancelQueries();
-    qc.clear();
     await supabase.auth.signOut();
-    navigate({ to: "/auth", replace: true });
+    router.replace("/auth");
   };
 
   const copy = (text: string, label = "Copied") => {
@@ -212,10 +254,58 @@ function Dashboard() {
     setObservedGaps("");
   };
 
+  const openRazorpay = async (planKey: "pro" | "agency") => {
+    try {
+      if (!window.Razorpay) {
+        await new Promise<void>((res, rej) => {
+          const s = document.createElement("script");
+          s.src = "https://checkout.razorpay.com/v1/checkout.js";
+          s.onload = () => res();
+          s.onerror = () => rej(new Error("Failed to load Razorpay"));
+          document.head.appendChild(s);
+        });
+      }
+
+      const order = await createOrder({ plan: planKey });
+
+      const rzp = new window.Razorpay({
+        key: order.keyId,
+        order_id: order.orderId,
+        amount: order.amount,
+        currency: order.currency,
+        name: "LeadCraft AI",
+        description: order.label,
+        prefill: { email: status?.email ?? "" },
+        theme: { color: "#CAFF45" },
+        handler: async (response: {
+          razorpay_order_id: string;
+          razorpay_payment_id: string;
+          razorpay_signature: string;
+        }) => {
+          try {
+            await verifyAndActivate(response);
+            fetchStatus();
+            setUpgradeOpen(false);
+            toast.success("Payment successful — you're now Premium!");
+          } catch (verifyErr) {
+            const msg = verifyErr instanceof Error ? verifyErr.message : JSON.stringify(verifyErr);
+            console.error("[Razorpay verify]", msg);
+            toast.error(msg);
+          }
+        },
+      });
+      rzp.open();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : JSON.stringify(err);
+      console.error("[Razorpay client]", msg);
+      toast.error(msg);
+    }
+  };
+
   const sidebarContent = (
     <div className="h-full flex flex-col">
       <div className="h-14 px-4 flex items-center justify-between border-b border-border">
-        <Link to="/" className="inline-flex items-center gap-2">
+        <Link href="/" className="inline-flex items-center gap-2">
           <div className="size-6 rounded-md bg-accent text-accent-foreground inline-flex items-center justify-center">
             <Flame className="size-3.5" />
           </div>
@@ -235,20 +325,20 @@ function Dashboard() {
       <div className="px-4 pt-2 pb-2 flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground">
         <HistoryIcon className="size-3.5" /> History
         <span className="ml-auto normal-case tracking-normal text-muted-foreground/70">
-          {history.data?.length ?? 0}
+          {history.length}
         </span>
       </div>
 
       <div className="flex-1 overflow-y-auto px-2 pb-3 space-y-1">
-        {history.isLoading && (
+        {historyLoading && (
           <div className="px-2 py-3 text-xs text-muted-foreground">Loading…</div>
         )}
-        {history.data?.length === 0 && (
+        {!historyLoading && history.length === 0 && (
           <div className="mx-2 my-2 rounded-lg border border-dashed border-border p-4 text-center text-xs text-muted-foreground">
             No pitches yet.
           </div>
         )}
-        {history.data?.map((row) => {
+        {history.map((row) => {
           const active = row.id === selectedId;
           return (
             <button
@@ -274,11 +364,11 @@ function Dashboard() {
                   tabIndex={0}
                   onClick={(e) => {
                     e.stopPropagation();
-                    del.mutate(row.id);
+                    handleDelete(row.id);
                   }}
                   className="opacity-0 group-hover:opacity-100 size-6 rounded inline-flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                 >
-                  <Trash2 className="size-3.5" />
+                  {deleting === row.id ? <Loader2 className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />}
                 </span>
               </div>
             </button>
@@ -286,7 +376,7 @@ function Dashboard() {
         })}
       </div>
 
-      {status.data && !status.data.isPremium && (
+      {status && !status.isPremium && (
         <div className="px-3 pb-2">
           <button
             onClick={() => setUpgradeOpen(true)}
@@ -303,10 +393,10 @@ function Dashboard() {
         </div>
       )}
 
-      {status.data?.email === ADMIN_EMAIL && (
+      {status?.email === ADMIN_EMAIL && (
         <div className="px-3 pb-2">
           <Link
-            to="/admin"
+            href="/admin"
             className="w-full flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-background/60 transition border border-transparent hover:border-border"
           >
             <Shield className="size-3.5 text-accent" /> Admin panel
@@ -316,7 +406,7 @@ function Dashboard() {
 
       <div className="px-3 pb-3">
         <Link
-          to="/settings"
+          href="/settings"
           className="w-full flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-background/60 transition border border-transparent hover:border-border"
         >
           <Settings className="size-3.5" /> Business profile
@@ -324,7 +414,7 @@ function Dashboard() {
       </div>
 
       <div className="border-t border-border p-3">
-        {status.isLoading ? (
+        {statusLoading ? (
           <div className="flex items-center gap-3 px-2 py-2.5 rounded-xl bg-background/40 border border-border">
             <div className="size-9 rounded-full bg-muted animate-pulse shrink-0" />
             <div className="flex-1 min-w-0 space-y-1.5">
@@ -335,25 +425,25 @@ function Dashboard() {
         ) : (
           <div className="flex items-center gap-3 px-2 py-2.5 rounded-xl bg-background/40 border border-border">
             <div className="size-9 rounded-full bg-accent/15 border border-accent/30 text-accent flex items-center justify-center shrink-0 text-sm font-bold uppercase">
-              {(status.data?.fullName ?? status.data?.email ?? "?")[0]}
+              {(status?.fullName ?? status?.email ?? "?")[0]}
             </div>
             <div className="flex-1 min-w-0">
-              {status.data?.fullName && (
+              {status?.fullName && (
                 <div className="truncate text-xs font-semibold text-foreground leading-tight">
-                  {status.data.fullName}
+                  {status.fullName}
                 </div>
               )}
               <div className="truncate text-[11px] text-muted-foreground leading-tight">
-                {status.data?.email ?? "—"}
+                {status?.email ?? "—"}
               </div>
               <div className="mt-1">
-                {status.data?.isPremium ? (
+                {status?.isPremium ? (
                   <span className="inline-flex items-center gap-1 text-[10px] font-semibold bg-accent/15 text-accent border border-accent/30 rounded-full px-1.5 py-0.5">
                     <Zap className="size-2.5" /> Pro
                   </span>
                 ) : (
                   <span className="text-[10px] text-muted-foreground">
-                    {status.data?.count ?? 0} / {status.data?.limit ?? 2} free pitches
+                    {status?.count ?? 0} / {status?.limit ?? 2} free pitches
                   </span>
                 )}
               </div>
@@ -372,57 +462,6 @@ function Dashboard() {
       </div>
     </div>
   );
-
-  const plans: PlanDef[] = plansQuery.data ?? [];
-
-  const openRazorpay = async (planKey: "pro" | "agency") => {
-    try {
-      // Lazy-load Razorpay checkout script
-      if (!window.Razorpay) {
-        await new Promise<void>((res, rej) => {
-          const s = document.createElement("script");
-          s.src = "https://checkout.razorpay.com/v1/checkout.js";
-          s.onload = () => res();
-          s.onerror = () => rej(new Error("Failed to load Razorpay"));
-          document.head.appendChild(s);
-        });
-      }
-
-      const order = await createOrderFn({ data: { plan: planKey } });
-
-      const rzp = new window.Razorpay({
-        key: order.keyId,
-        order_id: order.orderId,
-        amount: order.amount,
-        currency: order.currency,
-        name: "LeadCraft AI",
-        description: order.label,
-        prefill: { email: status.data?.email ?? "" },
-        theme: { color: "#CAFF45" },
-        handler: async (response: {
-          razorpay_order_id: string;
-          razorpay_payment_id: string;
-          razorpay_signature: string;
-        }) => {
-          try {
-            await verifyFn({ data: response });
-            qc.invalidateQueries({ queryKey: ["status"] });
-            setUpgradeOpen(false);
-            toast.success("Payment successful — you're now Premium!");
-          } catch (verifyErr) {
-            const msg = verifyErr instanceof Error ? verifyErr.message : JSON.stringify(verifyErr);
-            console.error("[Razorpay verify]", msg);
-            toast.error(msg);
-          }
-        },
-      });
-      rzp.open();
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : JSON.stringify(err);
-      console.error("[Razorpay client]", msg);
-      toast.error(msg);
-    }
-  };
 
   return (
     <>
@@ -496,7 +535,7 @@ function Dashboard() {
 
       {/* Mobile header */}
       <div className="md:hidden sticky top-0 z-20 h-14 px-4 flex items-center justify-between border-b border-border bg-background/95 backdrop-blur shrink-0">
-        <Link to="/" className="inline-flex items-center gap-2">
+        <Link href="/" className="inline-flex items-center gap-2">
           <div className="size-6 rounded-md bg-accent text-accent-foreground inline-flex items-center justify-center">
             <Flame className="size-3.5" />
           </div>
@@ -522,19 +561,19 @@ function Dashboard() {
                 <div className="h-14 px-4 flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground border-b border-border">
                   <HistoryIcon className="size-3.5" /> History
                   <span className="ml-auto normal-case tracking-normal">
-                    {history.data?.length ?? 0}
+                    {history.length}
                   </span>
                 </div>
                 <div className="flex-1 overflow-y-auto px-2 py-2 space-y-1">
-                  {history.isLoading && (
+                  {historyLoading && (
                     <div className="px-2 py-3 text-xs text-muted-foreground">Loading…</div>
                   )}
-                  {history.data?.length === 0 && (
+                  {!historyLoading && history.length === 0 && (
                     <div className="mx-2 my-2 rounded-lg border border-dashed border-border p-4 text-center text-xs text-muted-foreground">
                       No pitches yet.
                     </div>
                   )}
-                  {history.data?.map((row) => {
+                  {history.map((row) => {
                     const active = row.id === selectedId;
                     return (
                       <SheetClose asChild key={row.id}>
@@ -557,7 +596,7 @@ function Dashboard() {
                     );
                   })}
                 </div>
-                {status.data && !status.data.isPremium && (
+                {status && !status.isPremium && (
                   <div className="px-3 pb-2">
                     <SheetClose asChild>
                       <button
@@ -575,9 +614,8 @@ function Dashboard() {
                     </SheetClose>
                   </div>
                 )}
-
                 <div className="border-t border-border p-3">
-                  {status.isLoading ? (
+                  {statusLoading ? (
                     <div className="flex items-center gap-3 px-2 py-2.5 rounded-xl bg-background/40 border border-border">
                       <div className="size-9 rounded-full bg-muted animate-pulse shrink-0" />
                       <div className="flex-1 min-w-0 space-y-1.5">
@@ -588,25 +626,25 @@ function Dashboard() {
                   ) : (
                     <div className="flex items-center gap-3 px-2 py-2.5 rounded-xl bg-background/40 border border-border">
                       <div className="size-9 rounded-full bg-accent/15 border border-accent/30 text-accent flex items-center justify-center shrink-0 text-sm font-bold uppercase">
-                        {(status.data?.fullName ?? status.data?.email ?? "?")[0]}
+                        {(status?.fullName ?? status?.email ?? "?")[0]}
                       </div>
                       <div className="flex-1 min-w-0">
-                        {status.data?.fullName && (
+                        {status?.fullName && (
                           <div className="truncate text-xs font-semibold text-foreground leading-tight">
-                            {status.data.fullName}
+                            {status.fullName}
                           </div>
                         )}
                         <div className="truncate text-[11px] text-muted-foreground leading-tight">
-                          {status.data?.email ?? "—"}
+                          {status?.email ?? "—"}
                         </div>
                         <div className="mt-1">
-                          {status.data?.isPremium ? (
+                          {status?.isPremium ? (
                             <span className="inline-flex items-center gap-1 text-[10px] font-semibold bg-accent/15 text-accent border border-accent/30 rounded-full px-1.5 py-0.5">
                               <Zap className="size-2.5" /> Pro
                             </span>
                           ) : (
                             <span className="text-[10px] text-muted-foreground">
-                              {status.data?.count ?? 0} / {status.data?.limit ?? 2} free pitches
+                              {status?.count ?? 0} / {status?.limit ?? 2} free pitches
                             </span>
                           )}
                         </div>
@@ -697,10 +735,10 @@ function Dashboard() {
               ) : (
                 <Button
                   type="submit"
-                  disabled={mutate.isPending}
+                  disabled={generating}
                   className="w-full h-11 bg-primary text-primary-foreground hover:bg-primary/90 font-medium"
                 >
-                  {mutate.isPending ? (
+                  {generating ? (
                     <><Loader2 className="size-4 animate-spin mr-2" /> Crafting three formats…</>
                   ) : (
                     <>Generate pitch <Zap className="size-4 ml-2" /></>
@@ -720,7 +758,7 @@ function Dashboard() {
               <PitchTabs
                 pitch={selectedPitch}
                 onCopy={copy}
-                isPremium={status.data?.isPremium ?? false}
+                isPremium={status?.isPremium ?? false}
                 onUpgrade={() => setUpgradeOpen(true)}
               />
             </div>
@@ -768,7 +806,6 @@ function PitchTabs({
         </TabsTrigger>
       </TabsList>
 
-      {/* Email */}
       <TabsContent value="email" className="mt-4">
         <PitchCard
           label="Email"
@@ -812,7 +849,6 @@ function PitchTabs({
         </PitchCard>
       </TabsContent>
 
-      {/* WhatsApp */}
       <TabsContent value="whatsapp" className="mt-4">
         <PitchCard
           label="WhatsApp"
@@ -838,7 +874,6 @@ function PitchTabs({
         </PitchCard>
       </TabsContent>
 
-      {/* LinkedIn */}
       <TabsContent value="linkedin" className="mt-4">
         <PitchCard
           label="LinkedIn note"

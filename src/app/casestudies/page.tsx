@@ -1,21 +1,21 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowRight, Flame, Mail, MessageSquare, Linkedin, Building2, ChevronRight } from "lucide-react";
+import Link from "next/link";
+import { ArrowRight, Flame, Mail, MessageSquare, Linkedin, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import type { Metadata } from "next";
 
-export const Route = createFileRoute("/casestudies/")({
-  head: () => ({
-    meta: [
-      { title: "Case Studies — LeadCraft AI | Real Results From Real Outreach" },
-      { name: "description", content: "See how freelancers and agencies use LeadCraft AI to book more meetings — cold email, WhatsApp B2B, LinkedIn prospecting, and agency pitching." },
-      { property: "og:title", content: "Case Studies — LeadCraft AI" },
-      { property: "og:description", content: "Real results from real outreach. See how LeadCraft AI helped agencies and freelancers go from 2% to 18% reply rates." },
-      { property: "og:type", content: "website" },
-      { name: "twitter:title", content: "Case Studies — LeadCraft AI" },
-      { name: "twitter:description", content: "How agencies and freelancers use LeadCraft AI to book meetings with hyper-personalised pitches." },
-    ],
-  }),
-  component: CaseStudiesPage,
-});
+export const metadata: Metadata = {
+  title: "Case Studies — LeadCraft AI | Real Results From Real Outreach",
+  description: "See how freelancers and agencies use LeadCraft AI to book more meetings — cold email, WhatsApp B2B, LinkedIn prospecting, and agency pitching.",
+  openGraph: {
+    title: "Case Studies — LeadCraft AI",
+    description: "Real results from real outreach. See how LeadCraft AI helped agencies and freelancers go from 2% to 18% reply rates.",
+    type: "website",
+  },
+  twitter: {
+    title: "Case Studies — LeadCraft AI",
+    description: "How agencies and freelancers use LeadCraft AI to book meetings with hyper-personalised pitches.",
+  },
+};
 
 const CASE_STUDIES = [
   {
@@ -48,21 +48,21 @@ const CASE_STUDIES = [
   },
 ];
 
-function CaseStudiesPage() {
+export default function CaseStudiesPage() {
   return (
     <div className="min-h-screen bg-background relative">
       <div className="absolute inset-0 grid-bg pointer-events-none" />
       
       <header className="relative z-20 border-b border-border/50 bg-background/80 backdrop-blur sticky top-0">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
-          <Link to="/" className="inline-flex items-center gap-2">
+          <Link href="/" className="inline-flex items-center gap-2">
             <div className="size-7 rounded-md bg-accent text-accent-foreground inline-flex items-center justify-center">
               <Flame className="size-4" />
             </div>
             <span className="font-semibold tracking-tight text-foreground">LeadCraft AI</span>
           </Link>
           <Button variant="ghost" size="sm" asChild>
-            <Link to="/auth">Sign in</Link>
+            <Link href="/auth">Sign in</Link>
           </Button>
         </div>
       </header>

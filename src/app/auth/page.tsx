@@ -1,6 +1,7 @@
-import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+"use client";
+
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useServerFn } from "@tanstack/react-start";
+import Link from "next/link";
 import { supabase } from "@/integrations/supabase/client";
 import { googleSignIn, checkEmailProvider } from "@/lib/google-auth.functions";
 import { Input } from "@/components/ui/input";
@@ -9,8 +10,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Flame, Loader2 } from "lucide-react";
 
-// Client ID is public — safe in the browser bundle (GIS also embeds it in its iframe)
-const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined;
+const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID as string | undefined;
 
 declare global {
   interface Window {
@@ -42,31 +42,13 @@ declare global {
   }
 }
 
-export const Route = createFileRoute("/auth")({
-  head: () => ({
-    meta: [
-      { title: "Sign In — LeadCraft AI | Start Free" },
-      { name: "description", content: "Sign in or create a free LeadCraft AI account to generate personalised cold email, WhatsApp, and LinkedIn pitches in under 5 seconds." },
-      { property: "og:title", content: "Sign In — LeadCraft AI" },
-      { property: "og:description", content: "Create a free account and generate your first cold pitch in under 5 seconds. No credit card required." },
-      { property: "og:type", content: "website" },
-      { name: "robots", content: "noindex, nofollow" },
-    ],
-  }),
-  component: AuthPage,
-});
-
-function AuthPage() {
-  const navigate = useNavigate();
-  const googleSignInFn = useServerFn(googleSignIn);
-
+export default function AuthPage() {
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [alreadyExists, setAlreadyExists] = useState(false);
   const [existingProvider, setExistingProvider] = useState<"email" | "google" | "both" | null>(null);
-  const checkEmailProviderFn = useServerFn(checkEmailProvider);
 
   const googleBtnRef = useRef<HTMLDivElement>(null);
   const gisReady = useRef(false);
@@ -77,25 +59,15 @@ function AuthPage() {
     });
   }, []);
 
-  /**
-   * Called by GIS with the raw Google ID token.
-   * We verify it server-side (no Supabase Google provider required),
-   * then exchange the returned magic-link hash for a real session.
-   */
   const handleGoogleCredential = useCallback(
     async (response: { credential: string }) => {
       setLoading(true);
       try {
-        // Server verifies the token with Google, creates/finds the user,
-        // and returns a one-time magic-link hash
-        const result = await googleSignInFn({ data: { idToken: response.credential } });
-
-        // Exchange the hash for a Supabase session — no redirect needed
+        const result = await googleSignIn({ idToken: response.credential });
         const { error } = await supabase.auth.verifyOtp({
           token_hash: result.tokenHash,
           type: "email",
         });
-
         if (error) throw error;
         window.location.replace("/dashboard");
       } catch (err) {
@@ -108,17 +80,15 @@ function AuthPage() {
         setLoading(false);
       }
     },
-    [googleSignInFn],
+    [],
   );
 
-  // Load GIS and render Google's own sign-in button
   useEffect(() => {
     if (!GOOGLE_CLIENT_ID || gisReady.current) return;
 
     const render = () => {
       if (!window.google || !googleBtnRef.current || gisReady.current) return;
       gisReady.current = true;
-
       window.google.accounts.id.initialize({
         client_id: GOOGLE_CLIENT_ID,
         callback: handleGoogleCredential,
@@ -126,7 +96,6 @@ function AuthPage() {
         cancel_on_tap_outside: true,
         itp_support: true,
       });
-
       window.google.accounts.id.renderButton(googleBtnRef.current, {
         type: "standard",
         theme: "filled_black",
@@ -185,10 +154,14 @@ function AuthPage() {
       window.location.replace("/dashboard");
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Something went wrong";
-      if (mode === "signup" && (msg.toLowerCase().includes("already registered") || msg.toLowerCase().includes("already exists") || msg.toLowerCase().includes("email address is already"))) {
-        // Check which provider the existing account uses so we can show the right message
+      if (
+        mode === "signup" &&
+        (msg.toLowerCase().includes("already registered") ||
+          msg.toLowerCase().includes("already exists") ||
+          msg.toLowerCase().includes("email address is already"))
+      ) {
         try {
-          const { provider } = await checkEmailProviderFn({ data: { email } });
+          const { provider } = await checkEmailProvider({ email });
           setExistingProvider(provider === "none" ? "email" : provider);
         } catch {
           setExistingProvider("email");
@@ -206,7 +179,7 @@ function AuthPage() {
       <div className="absolute inset-0 grid-bg pointer-events-none" />
 
       <header className="relative z-10 p-4 sm:p-6">
-        <Link to="/" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
+        <Link href="/" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
           <Flame className="size-4 text-accent" />
           <span className="font-medium text-foreground">LeadCraft AI</span>
         </Link>
@@ -226,8 +199,6 @@ function AuthPage() {
           </div>
 
           <div className="rounded-2xl border border-border bg-surface/60 backdrop-blur p-5 sm:p-6 space-y-4">
-
-            {/* GIS renders its own iframe into this div — no Supabase OAuth redirect */}
             {GOOGLE_CLIENT_ID ? (
               <div
                 ref={googleBtnRef}
@@ -236,7 +207,7 @@ function AuthPage() {
               />
             ) : (
               <div className="w-full h-11 flex items-center justify-center rounded-md border border-border text-xs text-muted-foreground">
-                VITE_GOOGLE_CLIENT_ID not set
+                NEXT_PUBLIC_GOOGLE_CLIENT_ID not set
               </div>
             )}
 
@@ -263,7 +234,7 @@ function AuthPage() {
                   <Label htmlFor="password">Password</Label>
                   {mode === "signin" && (
                     <Link
-                      to="/forgot-password"
+                      href="/forgot-password"
                       className="text-xs text-muted-foreground hover:text-accent transition"
                     >
                       Forgot password?
@@ -299,7 +270,7 @@ function AuthPage() {
                           Sign in instead
                         </button>
                         {" · "}
-                        <Link to="/forgot-password" className="text-accent hover:underline">
+                        <Link href="/forgot-password" className="text-accent hover:underline">
                           Forgot password?
                         </Link>
                       </p>

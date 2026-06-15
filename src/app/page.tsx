@@ -1,6 +1,8 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+"use client";
+
 import { useState, useRef, useCallback, useEffect } from "react";
-import { useServerFn } from "@tanstack/react-start";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   ArrowRight, Flame, Zap, Target, MailCheck, Lock, Loader2,
   Mail, CheckCircle2, MousePointerClick, Sparkles, Copy,
@@ -15,7 +17,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { googleSignIn, checkEmailProvider } from "@/lib/google-auth.functions";
 import { toast } from "sonner";
 
-const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined;
+const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID as string | undefined;
 
 declare global {
   interface Window {
@@ -91,26 +93,6 @@ const FAQ_SCHEMA = {
   ],
 };
 
-export const Route = createFileRoute("/")({
-  head: () => ({
-    meta: [
-      { title: "LeadCraft AI — Cold Pitches That Book Meetings, Not Trash" },
-      { name: "description", content: "Generate hyper-personalised cold email, WhatsApp & LinkedIn pitches in under 5 seconds. Drop in a business name, location, and what's broken — LeadCraft AI does the rest. Free to start." },
-      { name: "keywords", content: "cold email generator, AI pitch writer, WhatsApp B2B outreach, LinkedIn prospecting, agency pitching, cold outreach tool, freelancer tools, lead generation AI" },
-      { property: "og:title", content: "LeadCraft AI — Cold Pitches That Book Meetings, Not Trash" },
-      { property: "og:description", content: "Generate hyper-personalised cold email, WhatsApp & LinkedIn pitches in under 5 seconds. Free to start. Built for freelancers and agencies." },
-      { property: "og:url", content: SITE_URL },
-      { property: "og:type", content: "website" },
-      { name: "twitter:title", content: "LeadCraft AI — Cold Pitches That Book Meetings" },
-      { name: "twitter:description", content: "Drop in a business, location, and what's broken. Get email, WhatsApp & LinkedIn pitches in under 5 seconds. Free to start." },
-    ],
-    scripts: [
-      { type: "application/ld+json", children: JSON.stringify(FAQ_SCHEMA) },
-    ],
-  }),
-  component: Landing,
-});
-
 function buildTeaser(businessName: string, location: string, gap: string): string {
   return `Hey, noticed ${businessName || "your business"} has been growing in ${location || "your city"} — but ${gap || "a few things"} is quietly costing you leads every week. We've fixed this exact issue for similar businesses in under 10 days. Mind if I send over a quick 5-minute Loom showing exactly what we'd do?`;
 }
@@ -119,12 +101,11 @@ function buildTeaser(businessName: string, location: string, gap: string): strin
 type DialogMode = "signup" | "signin" | "sent";
 
 function SignupDialog({
-  open, onOpenChange, onSuccess, googleSignInFn, initialMode = "signup",
+  open, onOpenChange, onSuccess, initialMode = "signup",
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   onSuccess: () => void;
-  googleSignInFn: ReturnType<typeof useServerFn<typeof googleSignIn>>;
   initialMode?: "signup" | "signin";
 }) {
   const [mode, setMode] = useState<DialogMode>(initialMode);
@@ -135,7 +116,6 @@ function SignupDialog({
   const [existingProvider, setExistingProvider] = useState<"email" | "google" | "both" | null>(null);
   const googleBtnRef = useRef<HTMLDivElement>(null);
   const gisReady = useRef(false);
-  const checkEmailProviderFn = useServerFn(checkEmailProvider);
 
   useEffect(() => {
     if (open) { setMode(initialMode); setEmail(""); setPassword(""); setLoading(false); setAlreadyExists(false); setExistingProvider(null); }
@@ -144,7 +124,7 @@ function SignupDialog({
   const handleGoogleCredential = useCallback(async (response: { credential: string }) => {
     setLoading(true);
     try {
-      const result = await googleSignInFn({ data: { idToken: response.credential } });
+      const result = await googleSignIn({ idToken: response.credential });
       const { error } = await supabase.auth.verifyOtp({ token_hash: result.tokenHash, type: "email" });
       if (error) throw error;
       onSuccess();
@@ -157,7 +137,7 @@ function SignupDialog({
       }
       setLoading(false);
     }
-  }, [googleSignInFn, onSuccess]);
+  }, [onSuccess]);
 
   useEffect(() => {
     if (!open || !GOOGLE_CLIENT_ID || mode === "sent") return;
@@ -196,7 +176,7 @@ function SignupDialog({
       const msg = err instanceof Error ? err.message : "Something went wrong";
       if (mode === "signup" && (msg.toLowerCase().includes("already registered") || msg.toLowerCase().includes("already exists") || msg.toLowerCase().includes("email address is already"))) {
         try {
-          const { provider } = await checkEmailProviderFn({ data: { email } });
+          const { provider } = await checkEmailProvider({ email });
           setExistingProvider(provider === "none" ? "email" : provider);
         } catch {
           setExistingProvider("email");
@@ -320,8 +300,8 @@ function SignupDialog({
 }
 
 // ── Landing ───────────────────────────────────────────────────────────────────
-function Landing() {
-  const googleSignInFn = useServerFn(googleSignIn);
+export default function Landing() {
+  const router = useRouter();
   const previewRef = useRef<HTMLDivElement>(null);
   const [businessName, setBusinessName] = useState("");
   const [location, setLocation] = useState("");
@@ -354,13 +334,17 @@ function Landing() {
   };
 
   const handleUnlock = () => { savePending(); openSignup(); };
-  const handleAuthSuccess = () => { setSignupOpen(false); window.location.replace("/dashboard"); };
+  const handleAuthSuccess = () => { setSignupOpen(false); router.replace("/dashboard"); };
 
   return (
     <div className="min-h-screen bg-background relative">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(FAQ_SCHEMA) }}
+      />
       <div className="absolute inset-0 grid-bg pointer-events-none" />
 
-      <SignupDialog open={signupOpen} onOpenChange={setSignupOpen} onSuccess={handleAuthSuccess} googleSignInFn={googleSignInFn} initialMode={dialogMode} />
+      <SignupDialog open={signupOpen} onOpenChange={setSignupOpen} onSuccess={handleAuthSuccess} initialMode={dialogMode} />
 
       {/* ── Navbar ── */}
       <header className="relative z-20 border-b border-border/50 bg-background/80 backdrop-blur sticky top-0">
@@ -723,10 +707,10 @@ function Landing() {
             <div>
               <p className="text-xs font-semibold text-foreground uppercase tracking-wider mb-3">Use cases</p>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><Link to="/use-cases/$slug" params={{ slug: "cold-email-outreach" }} className="hover:text-foreground transition">Cold email outreach</Link></li>
-                <li><Link to="/use-cases/$slug" params={{ slug: "whatsapp-b2b" }} className="hover:text-foreground transition">WhatsApp B2B</Link></li>
-                <li><Link to="/use-cases/$slug" params={{ slug: "linkedin-prospecting" }} className="hover:text-foreground transition">LinkedIn prospecting</Link></li>
-                <li><Link to="/use-cases/$slug" params={{ slug: "agency-pitching" }} className="hover:text-foreground transition">Agency pitching</Link></li>
+                <li><Link href="/use-cases/cold-email-outreach" className="hover:text-foreground transition">Cold email outreach</Link></li>
+                <li><Link href="/use-cases/whatsapp-b2b" className="hover:text-foreground transition">WhatsApp B2B</Link></li>
+                <li><Link href="/use-cases/linkedin-prospecting" className="hover:text-foreground transition">LinkedIn prospecting</Link></li>
+                <li><Link href="/use-cases/agency-pitching" className="hover:text-foreground transition">Agency pitching</Link></li>
               </ul>
             </div>
             {/* Company */}

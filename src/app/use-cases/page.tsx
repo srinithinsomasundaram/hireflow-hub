@@ -1,20 +1,20 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import Link from "next/link";
 import { Flame, ArrowRight, Mail, MessageCircle, Linkedin, Building2 } from "lucide-react";
+import type { Metadata } from "next";
 
-export const Route = createFileRoute("/use-cases/")({
-  head: () => ({
-    meta: [
-      { title: "Use Cases — LeadCraft AI | Cold Email, WhatsApp, LinkedIn & Agency Pitching" },
-      { name: "description", content: "See how LeadCraft AI powers cold email outreach, WhatsApp B2B, LinkedIn prospecting, and agency pitching — with hyper-personalised pitches in under 5 seconds." },
-      { property: "og:title", content: "Use Cases — LeadCraft AI" },
-      { property: "og:description", content: "Four outreach channels. One AI tool. Cold email, WhatsApp, LinkedIn, and agency pitching — all personalised in under 5 seconds." },
-      { property: "og:type", content: "website" },
-      { name: "twitter:title", content: "Use Cases — LeadCraft AI" },
-      { name: "twitter:description", content: "Cold email, WhatsApp B2B, LinkedIn prospecting, and agency pitching — all powered by LeadCraft AI." },
-    ],
-  }),
-  component: UseCasesIndex,
-});
+export const metadata: Metadata = {
+  title: "Use Cases — LeadCraft AI | Cold Email, WhatsApp, LinkedIn & Agency Pitching",
+  description: "See how LeadCraft AI powers cold email outreach, WhatsApp B2B, LinkedIn prospecting, and agency pitching — with hyper-personalised pitches in under 5 seconds.",
+  openGraph: {
+    title: "Use Cases — LeadCraft AI",
+    description: "Four outreach channels. One AI tool. Cold email, WhatsApp, LinkedIn, and agency pitching — all personalised in under 5 seconds.",
+    type: "website",
+  },
+  twitter: {
+    title: "Use Cases — LeadCraft AI",
+    description: "Cold email, WhatsApp B2B, LinkedIn prospecting, and agency pitching — all powered by LeadCraft AI.",
+  },
+};
 
 const USE_CASES = [
   {
@@ -47,20 +47,20 @@ const USE_CASES = [
   },
 ];
 
-function UseCasesIndex() {
+export default function UseCasesIndex() {
   return (
     <div className="min-h-screen bg-background relative">
       <div className="absolute inset-0 grid-bg pointer-events-none" />
 
       <header className="relative z-20 border-b border-border/50 bg-background/80 backdrop-blur sticky top-0">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
-          <Link to="/" className="inline-flex items-center gap-2">
+          <Link href="/" className="inline-flex items-center gap-2">
             <div className="size-7 rounded-md bg-accent text-accent-foreground inline-flex items-center justify-center">
               <Flame className="size-4" />
             </div>
             <span className="font-semibold tracking-tight text-foreground">LeadCraft AI</span>
           </Link>
-          <Link to="/" className="text-sm text-muted-foreground hover:text-foreground transition">← Back to home</Link>
+          <Link href="/" className="text-sm text-muted-foreground hover:text-foreground transition">← Back to home</Link>
         </div>
       </header>
 
@@ -77,8 +77,7 @@ function UseCasesIndex() {
           {USE_CASES.map(({ slug, icon: Icon, title, tagline, description }) => (
             <Link
               key={slug}
-              to={`/use-cases/${slug}` as "/use-cases/$slug"}
-              params={{ slug }}
+              href={`/use-cases/${slug}`}
               className="group rounded-2xl border border-border bg-surface/40 p-6 sm:p-8 hover:border-accent/40 transition-all"
             >
               <div className="size-11 rounded-xl bg-accent/10 text-accent inline-flex items-center justify-center mb-5 group-hover:bg-accent/20 transition-colors">

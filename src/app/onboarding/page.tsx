@@ -1,7 +1,6 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useState, useEffect } from "react";
-import { useMutation } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
+"use client";
+
+import { useState, useEffect, useCallback } from "react";
 import { saveOnboarding, getOnboardingStatus } from "@/lib/onboarding.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,11 +8,6 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Flame, Loader2, ArrowRight, Building2, Briefcase, User, LogOut } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-
-export const Route = createFileRoute("/_authenticated/onboarding")({
-  head: () => ({ meta: [{ title: "Set up your workspace — LeadCraft AI" }] }),
-  component: OnboardingPage,
-});
 
 const NICHES = [
   "Web design & development",
@@ -28,19 +22,16 @@ const NICHES = [
   "Other",
 ];
 
-function OnboardingPage() {
-  const saveFn = useServerFn(saveOnboarding);
-  const getStatusFn = useServerFn(getOnboardingStatus);
-
+export default function OnboardingPage() {
   const [checking, setChecking] = useState(true);
   const [fullName, setFullName] = useState("");
   const [agencyName, setAgencyName] = useState("");
   const [serviceNiche, setServiceNiche] = useState("");
   const [customNiche, setCustomNiche] = useState("");
+  const [saving, setSaving] = useState(false);
 
-  // If onboarding already done, skip to dashboard immediately
   useEffect(() => {
-    getStatusFn()
+    getOnboardingStatus()
       .then((status) => {
         if (status.completed) {
           window.location.replace("/dashboard");
@@ -49,31 +40,28 @@ function OnboardingPage() {
         }
       })
       .catch(() => setChecking(false));
-  }, [getStatusFn]);
+  }, []);
 
-  const save = useMutation({
-    mutationFn: () =>
-      saveFn({
-        data: {
-          fullName: fullName.trim(),
-          agencyName: agencyName.trim(),
-          serviceNiche: serviceNiche === "Other" ? customNiche.trim() : serviceNiche,
-        },
-      }),
-    onSuccess: () => {
-      toast.success("All set! Let's craft some pitches.");
-      window.location.replace("/dashboard");
-    },
-    onError: (err: Error) => toast.error(err.message || "Failed to save — try again"),
-  });
-
-  const onSubmit = (e: React.FormEvent) => {
+  const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const niche = serviceNiche === "Other" ? customNiche.trim() : serviceNiche;
     if (!fullName.trim()) { toast.error("Enter your name"); return; }
     if (!agencyName.trim()) { toast.error("Enter your business name"); return; }
     if (!niche) { toast.error("Select what you offer"); return; }
-    save.mutate();
+    setSaving(true);
+    try {
+      await saveOnboarding({
+        fullName: fullName.trim(),
+        agencyName: agencyName.trim(),
+        serviceNiche: niche,
+      });
+      toast.success("All set! Let's craft some pitches.");
+      window.location.replace("/dashboard");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to save — try again");
+    } finally {
+      setSaving(false);
+    }
   };
 
   if (checking) {
@@ -99,7 +87,9 @@ function OnboardingPage() {
           <button
             type="button"
             onClick={async () => {
-              try { await saveFn({ data: { fullName: "", agencyName: "", serviceNiche: "" } }); } catch { /* ignore */ }
+              try {
+                await saveOnboarding({ fullName: "", agencyName: "", serviceNiche: "" });
+              } catch { /* ignore */ }
               window.location.replace("/dashboard");
             }}
             className="text-xs text-muted-foreground hover:text-foreground transition"
@@ -213,10 +203,10 @@ function OnboardingPage() {
 
             <Button
               type="submit"
-              disabled={save.isPending}
+              disabled={saving}
               className="mt-5 w-full h-12 bg-primary text-primary-foreground hover:bg-primary/90 font-medium text-sm"
             >
-              {save.isPending ? (
+              {saving ? (
                 <Loader2 className="size-4 animate-spin" />
               ) : (
                 <>Get started <ArrowRight className="size-4 ml-1.5" /></>

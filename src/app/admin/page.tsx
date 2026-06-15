@@ -1,49 +1,71 @@
-import { createFileRoute, Link, redirect } from "@tanstack/react-router";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
+"use client";
+
+import { useEffect, useState, useCallback } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { getAdminDashboard, setUserPremium, type AdminUser } from "@/lib/admin.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Flame, Users, Zap, FileText, ArrowLeft, Crown, Shield } from "lucide-react";
+import { Flame, Users, Zap, FileText, ArrowLeft, Crown, Shield, Loader2 } from "lucide-react";
 
-const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL as string | undefined;
+const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL as string | undefined;
 
-export const Route = createFileRoute("/_authenticated/admin")({
-  head: () => ({ meta: [{ title: "Admin — LeadCraft AI" }] }),
-  beforeLoad: async () => {
-    const { data } = await supabase.auth.getUser();
-    if (data.user?.email !== ADMIN_EMAIL) throw redirect({ to: "/dashboard" });
-  },
-  component: AdminPage,
-});
+type DashboardData = {
+  users: AdminUser[];
+  stats: { total: number; premium: number; totalPitches: number };
+};
 
-function AdminPage() {
-  const qc = useQueryClient();
-  const getDashboardFn = useServerFn(getAdminDashboard);
-  const setPremiumFn = useServerFn(setUserPremium);
+export default function AdminPage() {
+  const router = useRouter();
+  const [data, setData] = useState<DashboardData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
 
-  const { data, isLoading, error } = useQuery({
-    queryKey: ["admin-dashboard"],
-    queryFn: () => getDashboardFn(),
-  });
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: userData }) => {
+      if (userData.user?.email !== ADMIN_EMAIL) {
+        router.replace("/dashboard");
+      }
+    });
+  }, [router]);
 
-  const togglePremium = useMutation({
-    mutationFn: ({ userId, isPremium }: { userId: string; isPremium: boolean }) =>
-      setPremiumFn({ data: { userId, isPremium } }),
-    onSuccess: (_, vars) => {
-      qc.invalidateQueries({ queryKey: ["admin-dashboard"] });
-      toast.success(vars.isPremium ? "User upgraded to Premium" : "User downgraded to Free");
-    },
-    onError: (err: Error) => toast.error(err.message),
-  });
+  const fetchData = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const result = await getAdminDashboard();
+      setData(result);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load");
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  const togglePremium = async (userId: string, isPremium: boolean) => {
+    setTogglingId(userId);
+    try {
+      await setUserPremium({ userId, isPremium });
+      await fetchData();
+      toast.success(isPremium ? "User upgraded to Premium" : "User downgraded to Free");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed");
+    } finally {
+      setTogglingId(null);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
       <header className="sticky top-0 z-20 border-b border-border bg-background/95 backdrop-blur">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center gap-4">
-          <Link to="/dashboard" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition">
+          <Link href="/dashboard" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition">
             <ArrowLeft className="size-4" /> Dashboard
           </Link>
           <div className="h-4 w-px bg-border" />
@@ -61,8 +83,6 @@ function AdminPage() {
       </header>
 
       <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-8">
-
-        {/* Stats */}
         {data && (
           <div className="grid grid-cols-3 gap-4">
             <StatCard
@@ -84,7 +104,6 @@ function AdminPage() {
           </div>
         )}
 
-        {/* User table */}
         <div className="rounded-2xl border border-border bg-surface/40 overflow-hidden">
           <div className="px-5 py-4 border-b border-border flex items-center justify-between">
             <div>
@@ -94,12 +113,14 @@ function AdminPage() {
           </div>
 
           {isLoading && (
-            <div className="px-5 py-12 text-center text-sm text-muted-foreground">Loading…</div>
+            <div className="px-5 py-12 text-center text-sm text-muted-foreground flex items-center justify-center gap-2">
+              <Loader2 className="size-4 animate-spin" /> Loading…
+            </div>
           )}
 
           {error && (
             <div className="px-5 py-12 text-center text-sm text-destructive">
-              {error instanceof Error ? error.message : "Failed to load"}
+              {error}
             </div>
           )}
 
@@ -124,10 +145,8 @@ function AdminPage() {
                     <UserRow
                       key={user.id}
                       user={user}
-                      onToggle={(isPremium) =>
-                        togglePremium.mutate({ userId: user.id, isPremium })
-                      }
-                      loading={togglePremium.isPending && togglePremium.variables?.userId === user.id}
+                      onToggle={(isPremium) => togglePremium(user.id, isPremium)}
+                      loading={togglingId === user.id}
                     />
                   ))}
                 </tbody>

@@ -1,44 +1,18 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft, Flame, CheckCircle2, Zap, Target, TrendingUp, Users } from "lucide-react";
+import Link from "next/link";
+import { ArrowLeft, Flame, Zap, Target, TrendingUp, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import type { Metadata } from "next";
 
-export const Route = createFileRoute("/casestudies/$slug")({
-  head: ({ params }) => {
-    const page = DATA[params.slug];
-    const humanTitle = params.slug.split("-").map((s: string) => s.charAt(0).toUpperCase() + s.slice(1)).join(" ");
-    const title = `${humanTitle} Case Study — LeadCraft AI`;
-    const description = page
-      ? `How a ${page.niche} in ${page.location} used LeadCraft AI to transform their outreach. ${page.result}`
-      : `How LeadCraft AI helped scale ${humanTitle.toLowerCase()} with hyper-personalised pitches.`;
-    return {
-      meta: [
-        { title },
-        { name: "description", content: description },
-        { property: "og:title", content: title },
-        { property: "og:description", content: description },
-        { property: "og:type", content: "article" },
-        { name: "twitter:title", content: title },
-        { name: "twitter:description", content: description },
-      ],
-      scripts: [
-        {
-          type: "application/ld+json",
-          children: JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "Article",
-            headline: title,
-            description,
-            author: { "@type": "Organization", name: "Yesp Studio", email: "hello@yespstudio.com" },
-            publisher: { "@type": "Organization", name: "LeadCraft AI" },
-          }),
-        },
-      ],
-    };
-  },
-  component: CaseStudyDetail,
-});
-
-const DATA: Record<string, any> = {
+const DATA: Record<string, {
+  title: string;
+  location: string;
+  niche: string;
+  challenge: string;
+  solution: string;
+  result: string;
+  quote: string;
+  metrics: { label: string; value: string; icon: React.ElementType }[];
+}> = {
   "cold-email-outreach": {
     title: "Cold Email Outreach",
     location: "London, UK",
@@ -51,7 +25,7 @@ const DATA: Record<string, any> = {
       { label: "Response Rate", value: "18%", icon: TrendingUp },
       { label: "Meetings Booked", value: "12", icon: Users },
       { label: "Time Saved", value: "15h/wk", icon: Zap },
-    ]
+    ],
   },
   "whatsapp-b2b": {
     title: "WhatsApp B2B",
@@ -65,7 +39,7 @@ const DATA: Record<string, any> = {
       { label: "Response Rate", value: "40%", icon: TrendingUp },
       { label: "Pilot Users", value: "8", icon: Users },
       { label: "Lead Gen Speed", value: "3x", icon: Zap },
-    ]
+    ],
   },
   "linkedin-prospecting": {
     title: "LinkedIn Prospecting",
@@ -79,7 +53,7 @@ const DATA: Record<string, any> = {
       { label: "Acceptance Rate", value: "25%", icon: TrendingUp },
       { label: "New Contracts", value: "5", icon: Users },
       { label: "Personalisation", value: "100%", icon: Target },
-    ]
+    ],
   },
   "agency-pitching": {
     title: "Agency Pitching",
@@ -93,37 +67,69 @@ const DATA: Record<string, any> = {
       { label: "High-Ticket Wins", value: "5", icon: Users },
       { label: "Contract Value", value: "+30%", icon: TrendingUp },
       { label: "Win Rate", value: "2x", icon: Target },
-    ]
-  }
+    ],
+  },
 };
 
-function CaseStudyDetail() {
-  const { slug } = Route.useParams();
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params;
+  const page = DATA[slug];
+  const humanTitle = slug.split("-").map((s: string) => s.charAt(0).toUpperCase() + s.slice(1)).join(" ");
+  const title = `${humanTitle} Case Study — LeadCraft AI`;
+  const description = page
+    ? `How a ${page.niche} in ${page.location} used LeadCraft AI to transform their outreach. ${page.result}`
+    : `How LeadCraft AI helped scale ${humanTitle.toLowerCase()} with hyper-personalised pitches.`;
+  return {
+    title,
+    description,
+    openGraph: { title, description, type: "article" },
+    twitter: { title, description },
+  };
+}
+
+export default async function CaseStudyDetail({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
   const data = DATA[slug];
 
-  if (!data) return (
-    <div className="min-h-screen flex items-center justify-center">
-      <div className="text-center">
-        <h1 className="text-2xl font-bold mb-4">Case Study Not Found</h1>
-        <Button asChild><Link to="/casestudies">Back to Case Studies</Link></Button>
+  if (!data) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-4">Case Study Not Found</h1>
+          <Button asChild><Link href="/casestudies">Back to Case Studies</Link></Button>
+        </div>
       </div>
-    </div>
-  );
+    );
+  }
+
+  const humanTitle = slug.split("-").map((s: string) => s.charAt(0).toUpperCase() + s.slice(1)).join(" ");
+  const title = `${humanTitle} Case Study — LeadCraft AI`;
+  const description = `How a ${data.niche} in ${data.location} used LeadCraft AI to transform their outreach. ${data.result}`;
+
+  const articleSchema = {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    headline: title,
+    description,
+    author: { "@type": "Organization", name: "Yesp Studio", email: "hello@yespstudio.com" },
+    publisher: { "@type": "Organization", name: "LeadCraft AI" },
+  };
 
   return (
     <div className="min-h-screen bg-background relative">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }} />
       <div className="absolute inset-0 grid-bg pointer-events-none" />
       
       <header className="relative z-20 border-b border-border/50 bg-background/80 backdrop-blur sticky top-0">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
-          <Link to="/" className="inline-flex items-center gap-2">
+          <Link href="/" className="inline-flex items-center gap-2">
             <div className="size-7 rounded-md bg-accent text-accent-foreground inline-flex items-center justify-center">
               <Flame className="size-4" />
             </div>
             <span className="font-semibold tracking-tight text-foreground">LeadCraft AI</span>
           </Link>
           <Button variant="ghost" size="sm" asChild>
-            <Link to="/casestudies" className="flex items-center gap-2 text-muted-foreground">
+            <Link href="/casestudies" className="flex items-center gap-2 text-muted-foreground">
               <ArrowLeft className="size-4" /> Back
             </Link>
           </Button>
@@ -142,7 +148,7 @@ function CaseStudyDetail() {
         </div>
 
         <div className="grid sm:grid-cols-3 gap-4 mb-12">
-          {data.metrics.map((m: any) => (
+          {data.metrics.map((m) => (
             <div key={m.label} className="rounded-2xl border border-border bg-surface/40 p-6 text-center">
               <div className="size-10 rounded-full bg-accent/10 text-accent flex items-center justify-center mx-auto mb-4">
                 <m.icon className="size-5" />
@@ -187,7 +193,7 @@ function CaseStudyDetail() {
             Join thousands of freelancers and agencies booking more meetings with AI-powered personalised pitches.
           </p>
           <Button size="lg" variant="secondary" asChild className="h-12 px-8 font-bold">
-            <Link to="/auth">Get Started for Free <ArrowLeft className="size-4 ml-2 rotate-180" /></Link>
+            <Link href="/auth">Get Started for Free <ArrowLeft className="size-4 ml-2 rotate-180" /></Link>
           </Button>
         </div>
       </main>

@@ -1,62 +1,18 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import Link from "next/link";
 import {
   Flame, ArrowLeft, ArrowRight, CheckCircle2, Zap, Target,
   Clock, Copy, Mail, MessageCircle, Linkedin, Building2,
   AlertCircle, Lightbulb, ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-
-export const Route = createFileRoute("/use-cases/$slug")({
-  head: ({ params }) => {
-    const page = PAGES[params.slug];
-    const title = page ? `${page.title} — LeadCraft AI` : "Use Case — LeadCraft AI";
-    const description = page?.metaDescription ?? "Learn how LeadCraft AI powers your outreach.";
-    const faqSchema = page
-      ? {
-          "@context": "https://schema.org",
-          "@type": "FAQPage",
-          mainEntity: page.faq.map(({ q, a }) => ({
-            "@type": "Question",
-            name: q,
-            acceptedAnswer: { "@type": "Answer", text: a },
-          })),
-        }
-      : null;
-    const articleSchema = page
-      ? {
-          "@context": "https://schema.org",
-          "@type": "Article",
-          headline: title,
-          description,
-          author: { "@type": "Organization", name: "Yesp Studio", email: "hello@yespstudio.com" },
-          publisher: { "@type": "Organization", name: "LeadCraft AI" },
-        }
-      : null;
-    return {
-      meta: [
-        { title },
-        { name: "description", content: description },
-        { property: "og:title", content: title },
-        { property: "og:description", content: description },
-        { property: "og:type", content: "article" },
-        { name: "twitter:title", content: title },
-        { name: "twitter:description", content: description },
-      ],
-      scripts: [
-        ...(faqSchema ? [{ type: "application/ld+json", children: JSON.stringify(faqSchema) }] : []),
-        ...(articleSchema ? [{ type: "application/ld+json", children: JSON.stringify(articleSchema) }] : []),
-      ],
-    };
-  },
-  component: UseCasePage,
-});
+import type { Metadata } from "next";
 
 type Step = { title: string; body: string };
-type Tip = { icon: typeof Lightbulb; text: string };
+type Tip = { icon: React.ElementType; text: string };
 type Metric = { value: string; label: string };
 
 type Page = {
-  icon: typeof Mail;
+  icon: React.ElementType;
   title: string;
   tagline: string;
   metaDescription: string;
@@ -84,26 +40,11 @@ const PAGES: Record<string, Page> = {
       { value: "3×", label: "More meetings" },
     ],
     steps: [
-      {
-        title: "Research your prospect for 60 seconds",
-        body: "Visit their website, Google Business listing, or Instagram. Look for one concrete problem — slow site, no booking link, missing reviews, broken mobile layout, zero social proof. You only need one specific gap.",
-      },
-      {
-        title: "Enter the details into LeadCraft",
-        body: "Drop in the business name, their city or market, and the gap you spotted. That's all. LeadCraft uses these three inputs to write a pitch that sounds researched because it is.",
-      },
-      {
-        title: "Review the generated email",
-        body: "LeadCraft writes a subject line, an opening hook referencing the gap, a one-sentence proof of concept, and a low-friction CTA. Read it once — it should sound like you wrote it after 20 minutes of research.",
-      },
-      {
-        title: "Personalise the sign-off",
-        body: "Add your name and agency from your business profile. If you spotted something specific beyond the gap (a recent award, a product launch), add one sentence. Then send. Don't over-edit — specificity is already there.",
-      },
-      {
-        title: "Follow up with a value nudge",
-        body: "If no reply in 3–4 days, send a single follow-up that adds value — a screenshot, a quick Loom, a specific stat. LeadCraft's WhatsApp format works perfectly as a follow-up touch on a different channel.",
-      },
+      { title: "Research your prospect for 60 seconds", body: "Visit their website, Google Business listing, or Instagram. Look for one concrete problem — slow site, no booking link, missing reviews, broken mobile layout, zero social proof. You only need one specific gap." },
+      { title: "Enter the details into LeadCraft", body: "Drop in the business name, their city or market, and the gap you spotted. That's all. LeadCraft uses these three inputs to write a pitch that sounds researched because it is." },
+      { title: "Review the generated email", body: "LeadCraft writes a subject line, an opening hook referencing the gap, a one-sentence proof of concept, and a low-friction CTA. Read it once — it should sound like you wrote it after 20 minutes of research." },
+      { title: "Personalise the sign-off", body: "Add your name and agency from your business profile. If you spotted something specific beyond the gap (a recent award, a product launch), add one sentence. Then send. Don't over-edit — specificity is already there." },
+      { title: "Follow up with a value nudge", body: "If no reply in 3–4 days, send a single follow-up that adds value — a screenshot, a quick Loom, a specific stat. LeadCraft's WhatsApp format works perfectly as a follow-up touch on a different channel." },
     ],
     tips: [
       { icon: Target, text: "One gap per email. Don't list five problems — pick the most painful one and make it the entire story." },
@@ -115,16 +56,7 @@ const PAGES: Record<string, Page> = {
     example: {
       label: "Email example",
       subject: "Quick note for Brio Pizzeria",
-      body: `Hey Marco,
-
-Noticed Brio Pizzeria has been getting great foot traffic in Whitefield — congrats on the new outlet. One thing I spotted: your mobile site takes 8+ seconds to load, and there's no online reservation option. In Bangalore's market, that's quietly pushing customers to Swiggy Dineout or competitors with faster booking.
-
-We fixed this exact issue for a similar restaurant in Koramangala — online bookings went from 0 to 40/week in under two weeks.
-
-Would it be worth a 10-minute call to see if the same applies here?
-
-— Priya
-Pixel Studio`,
+      body: `Hey Marco,\n\nNoticed Brio Pizzeria has been getting great foot traffic in Whitefield — congrats on the new outlet. One thing I spotted: your mobile site takes 8+ seconds to load, and there's no online reservation option. In Bangalore's market, that's quietly pushing customers to Swiggy Dineout or competitors with faster booking.\n\nWe fixed this exact issue for a similar restaurant in Koramangala — online bookings went from 0 to 40/week in under two weeks.\n\nWould it be worth a 10-minute call to see if the same applies here?\n\n— Priya\nPixel Studio`,
     },
     faq: [
       { q: "How many emails should I send per day?", a: "Start with 20–30 if you're using a new domain. Warm the domain for 2–3 weeks before scaling to 100+. Quality over volume — 30 specific emails outperform 200 generic ones." },
@@ -134,7 +66,6 @@ Pixel Studio`,
     ],
     next: "whatsapp-b2b",
   },
-
   "whatsapp-b2b": {
     icon: MessageCircle,
     title: "WhatsApp B2B",
@@ -148,26 +79,11 @@ Pixel Studio`,
       { value: "<2min", label: "Avg read time" },
     ],
     steps: [
-      {
-        title: "Qualify before you message",
-        body: "WhatsApp is intimate — unsolicited messages from unknown numbers can feel invasive. Target warm-ish prospects: businesses you've seen advertise locally, owners whose details are on their Google Business page, or referrals. Always have a 'how I found you' line ready.",
-      },
-      {
-        title: "Generate the WhatsApp format in LeadCraft",
-        body: "The WhatsApp format is specifically written to be shorter and more conversational than the email version. It strips out formal language, skips pleasantries, and opens with a direct observation in under 3 lines.",
-      },
-      {
-        title: "Send at the right time",
-        body: "For Indian business owners: 9–11 AM or 5–7 PM works best. Avoid early morning and late night — it feels intrusive. For restaurant/retail: Tuesday to Saturday. For office-based businesses: weekday mornings.",
-      },
-      {
-        title: "Wait for the read receipt before following up",
-        body: "The blue ticks tell you they read it. Give them 24–48 hours before following up. Follow up with a value add, not a 'just checking in' — send a screenshot, a quick stat, or a relevant example.",
-      },
-      {
-        title: "Move the conversation to a call fast",
-        body: "WhatsApp is for opening doors, not closing deals. The moment they show interest, suggest a voice note or a 10-minute call. Don't negotiate over chat.",
-      },
+      { title: "Qualify before you message", body: "WhatsApp is intimate — unsolicited messages from unknown numbers can feel invasive. Target warm-ish prospects: businesses you've seen advertise locally, owners whose details are on their Google Business page, or referrals. Always have a 'how I found you' line ready." },
+      { title: "Generate the WhatsApp format in LeadCraft", body: "The WhatsApp format is specifically written to be shorter and more conversational than the email version. It strips out formal language, skips pleasantries, and opens with a direct observation in under 3 lines." },
+      { title: "Send at the right time", body: "For Indian business owners: 9–11 AM or 5–7 PM works best. Avoid early morning and late night — it feels intrusive. For restaurant/retail: Tuesday to Saturday. For office-based businesses: weekday mornings." },
+      { title: "Wait for the read receipt before following up", body: "The blue ticks tell you they read it. Give them 24–48 hours before following up. Follow up with a value add, not a 'just checking in' — send a screenshot, a quick stat, or a relevant example." },
+      { title: "Move the conversation to a call fast", body: "WhatsApp is for opening doors, not closing deals. The moment they show interest, suggest a voice note or a 10-minute call. Don't negotiate over chat." },
     ],
     tips: [
       { icon: Target, text: "Keep it under 5 lines. WhatsApp messages that need scrolling get ignored. Front-load your hook in the first line." },
@@ -178,15 +94,7 @@ Pixel Studio`,
     ],
     example: {
       label: "WhatsApp message example",
-      body: `Hey Marco 👋
-
-Noticed Brio Pizzeria is doing well in Whitefield — but your site takes 8s to load on mobile and there's no way to reserve a table online.
-
-We fixed the same problem for a restaurant in Koramangala. Online bookings went from 0 → 40/week.
-
-Worth a quick 10-min call this week?
-
-— Priya, Pixel Studio`,
+      body: `Hey Marco 👋\n\nNoticed Brio Pizzeria is doing well in Whitefield — but your site takes 8s to load on mobile and there's no way to reserve a table online.\n\nWe fixed the same problem for a restaurant in Koramangala. Online bookings went from 0 → 40/week.\n\nWorth a quick 10-min call this week?\n\n— Priya, Pixel Studio`,
     },
     faq: [
       { q: "Is it legal to cold message on WhatsApp?", a: "WhatsApp Business Platform (API) has strict policies. For manual outreach, as long as you're messaging publicly listed numbers and being respectful, it's generally acceptable. Always make it easy to opt out by saying 'let me know if you'd like me to stop messaging'." },
@@ -196,7 +104,6 @@ Worth a quick 10-min call this week?
     ],
     next: "linkedin-prospecting",
   },
-
   "linkedin-prospecting": {
     icon: Linkedin,
     title: "LinkedIn Prospecting",
@@ -210,26 +117,11 @@ Worth a quick 10-min call this week?
       { value: "5×", label: "More replies vs generic" },
     ],
     steps: [
-      {
-        title: "Identify the right prospects",
-        body: "Use LinkedIn Sales Navigator or manual search to find founders, marketing managers, or ops leads at companies that match your ICP. Look for companies with 10–200 employees — large enough to have budget, small enough for your message to land with the decision-maker.",
-      },
-      {
-        title: "Spend 2 minutes on their profile",
-        body: "Check their recent posts, their company's LinkedIn page, their job description, and their headline. You're looking for one signal: a challenge, a goal, or an obvious gap. A recent company milestone means they're growing and may need support. A post about a problem is a perfect hook.",
-      },
-      {
-        title: "Generate the LinkedIn note in LeadCraft",
-        body: "Enter the business name, city/market, and the gap or signal you noticed. LeadCraft generates a note under 300 characters that opens with the observation, not a pitch. It sounds like something you'd write after genuinely researching the person.",
-      },
-      {
-        title: "Send the connection request with the note",
-        body: "Never send a blank request to a cold prospect — the acceptance rate drops to under 10%. Always include the generated note. Don't mention what you sell yet. Just establish the connection with a relevant observation.",
-      },
-      {
-        title: "Follow up after they accept",
-        body: "Wait for them to accept, then send a follow-up message that expands slightly. Mention one specific result you've achieved for a similar company. Offer something of value — a quick audit, a relevant insight — before asking for anything.",
-      },
+      { title: "Identify the right prospects", body: "Use LinkedIn Sales Navigator or manual search to find founders, marketing managers, or ops leads at companies that match your ICP. Look for companies with 10–200 employees — large enough to have budget, small enough for your message to land with the decision-maker." },
+      { title: "Spend 2 minutes on their profile", body: "Check their recent posts, their company's LinkedIn page, their job description, and their headline. You're looking for one signal: a challenge, a goal, or an obvious gap. A recent company milestone means they're growing and may need support. A post about a problem is a perfect hook." },
+      { title: "Generate the LinkedIn note in LeadCraft", body: "Enter the business name, city/market, and the gap or signal you noticed. LeadCraft generates a note under 300 characters that opens with the observation, not a pitch. It sounds like something you'd write after genuinely researching the person." },
+      { title: "Send the connection request with the note", body: "Never send a blank request to a cold prospect — the acceptance rate drops to under 10%. Always include the generated note. Don't mention what you sell yet. Just establish the connection with a relevant observation." },
+      { title: "Follow up after they accept", body: "Wait for them to accept, then send a follow-up message that expands slightly. Mention one specific result you've achieved for a similar company. Offer something of value — a quick audit, a relevant insight — before asking for anything." },
     ],
     tips: [
       { icon: Target, text: "Reference something specific to them — a recent post, a company update, a job opening. Generic openers get ignored. Specific openers start conversations." },
@@ -250,7 +142,6 @@ Worth a quick 10-min call this week?
     ],
     next: "agency-pitching",
   },
-
   "agency-pitching": {
     icon: Building2,
     title: "Agency Pitching",
@@ -264,26 +155,11 @@ Worth a quick 10-min call this week?
       { value: "10×", label: "Outreach volume" },
     ],
     steps: [
-      {
-        title: "Build a targeted prospect list",
-        body: "Don't spray. Pick a niche for each outreach sprint — 'restaurants in Chennai with no online ordering' or 'real estate agencies in Pune with outdated websites'. A tight niche means every pitch is relevant and your close rate multiplies.",
-      },
-      {
-        title: "Identify the revenue gap, not the design flaw",
-        body: "Prospects don't care about 'poor UX'. They care about lost revenue. Before generating your pitch, translate the technical problem into a business cost: 'No booking link = customers going to Zomato instead'. That framing is what LeadCraft uses to make the pitch land.",
-      },
-      {
-        title: "Generate pitches in bulk by niche",
-        body: "Use LeadCraft to generate personalised pitches for each prospect in your list. Since you're targeting one niche, the 'gap' is similar across prospects — but the business name, location, and specific details make each pitch feel individual.",
-      },
-      {
-        title: "Sequence across channels",
-        body: "Day 1: cold email. Day 3: LinkedIn connection request. Day 5: WhatsApp message (if number is available). Day 8: email follow-up with a value add. Using all three channels with LeadCraft's format for each gives you maximum surface area without being spammy.",
-      },
-      {
-        title: "Track and refine by niche",
-        body: "After two weeks, review which niche, which gap framing, and which channel drove the most replies. Double down on what worked. LeadCraft's pitch history lets you review past generations and identify patterns in what converts.",
-      },
+      { title: "Build a targeted prospect list", body: "Don't spray. Pick a niche for each outreach sprint — 'restaurants in Chennai with no online ordering' or 'real estate agencies in Pune with outdated websites'. A tight niche means every pitch is relevant and your close rate multiplies." },
+      { title: "Identify the revenue gap, not the design flaw", body: "Prospects don't care about 'poor UX'. They care about lost revenue. Before generating your pitch, translate the technical problem into a business cost: 'No booking link = customers going to Zomato instead'. That framing is what LeadCraft uses to make the pitch land." },
+      { title: "Generate pitches in bulk by niche", body: "Use LeadCraft to generate personalised pitches for each prospect in your list. Since you're targeting one niche, the 'gap' is similar across prospects — but the business name, location, and specific details make each pitch feel individual." },
+      { title: "Sequence across channels", body: "Day 1: cold email. Day 3: LinkedIn connection request. Day 5: WhatsApp message (if number is available). Day 8: email follow-up with a value add. Using all three channels with LeadCraft's format for each gives you maximum surface area without being spammy." },
+      { title: "Track and refine by niche", body: "After two weeks, review which niche, which gap framing, and which channel drove the most replies. Double down on what worked. LeadCraft's pitch history lets you review past generations and identify patterns in what converts." },
     ],
     tips: [
       { icon: Target, text: "Niche down each sprint. 'Restaurants without online ordering in Hyderabad' converts better than 'local businesses'. The more specific the ICP, the sharper the pitch." },
@@ -295,18 +171,7 @@ Worth a quick 10-min call this week?
     example: {
       label: "Agency pitch email example",
       subject: "Quick note for The Grand Spice — Hyderabad",
-      body: `Hi Ravi,
-
-The Grand Spice is doing incredible numbers on Google Reviews — 4.8 across 600+ reviews is rare. But I noticed there's no way to book a table online, and your Zomato listing shows a 45-minute average wait time on weekends.
-
-That means guests who can't walk in are going straight to competitors who let them reserve in advance.
-
-We helped Coastal Kitchen (similar profile, also Hyderabad) add online reservations and a WhatsApp booking flow. They went from 0 to 60 pre-booked covers per weekend within 3 weeks.
-
-Worth a 15-minute call to see if we can do the same here?
-
-— Priya
-Pixel Studio | pixelstudio.in`,
+      body: `Hi Ravi,\n\nThe Grand Spice is doing incredible numbers on Google Reviews — 4.8 across 600+ reviews is rare. But I noticed there's no way to book a table online, and your Zomato listing shows a 45-minute average wait time on weekends.\n\nThat means guests who can't walk in are going straight to competitors who let them reserve in advance.\n\nWe helped Coastal Kitchen (similar profile, also Hyderabad) add online reservations and a WhatsApp booking flow. They went from 0 to 60 pre-booked covers per weekend within 3 weeks.\n\nWorth a 15-minute call to see if we can do the same here?\n\n— Priya\nPixel Studio | pixelstudio.in`,
     },
     faq: [
       { q: "How do I find the right prospects at scale?", a: "Google Maps scraping (tools like Outscraper), LinkedIn Sales Navigator, and local business directories give you the raw list. Filter by niche, reviews, and web presence before generating pitches." },
@@ -325,8 +190,21 @@ const NEXT_LABELS: Record<string, string> = {
   "agency-pitching": "Agency Pitching",
 };
 
-function UseCasePage() {
-  const { slug } = Route.useParams();
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params;
+  const page = PAGES[slug];
+  const title = page ? `${page.title} — LeadCraft AI` : "Use Case — LeadCraft AI";
+  const description = page?.metaDescription ?? "Learn how LeadCraft AI powers your outreach.";
+  return {
+    title,
+    description,
+    openGraph: { title, description, type: "article" },
+    twitter: { title, description },
+  };
+}
+
+export default async function UseCasePage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
   const page = PAGES[slug];
 
   if (!page) {
@@ -334,7 +212,7 @@ function UseCasePage() {
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
           <h1 className="text-2xl font-semibold text-foreground mb-3">Page not found</h1>
-          <Link to="/use-cases" className="text-accent hover:underline text-sm">← Back to use cases</Link>
+          <Link href="/use-cases" className="text-accent hover:underline text-sm">← Back to use cases</Link>
         </div>
       </div>
     );
@@ -342,28 +220,46 @@ function UseCasePage() {
 
   const Icon = page.icon;
 
+  const faqSchema = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: page.faq.map(({ q, a }) => ({
+      "@type": "Question",
+      name: q,
+      acceptedAnswer: { "@type": "Answer", text: a },
+    })),
+  };
+
+  const articleSchema = {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    headline: `${page.title} — LeadCraft AI`,
+    description: page.metaDescription,
+    author: { "@type": "Organization", name: "Yesp Studio", email: "hello@yespstudio.com" },
+    publisher: { "@type": "Organization", name: "LeadCraft AI" },
+  };
+
   return (
     <div className="min-h-screen bg-background relative">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }} />
       <div className="absolute inset-0 grid-bg pointer-events-none" />
 
-      {/* Nav */}
       <header className="relative z-20 border-b border-border/50 bg-background/80 backdrop-blur sticky top-0">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
-          <Link to="/" className="inline-flex items-center gap-2">
+          <Link href="/" className="inline-flex items-center gap-2">
             <div className="size-7 rounded-md bg-accent text-accent-foreground inline-flex items-center justify-center">
               <Flame className="size-4" />
             </div>
             <span className="font-semibold tracking-tight text-foreground">LeadCraft AI</span>
           </Link>
-          <Link to="/use-cases" className="text-sm text-muted-foreground hover:text-foreground transition flex items-center gap-1">
+          <Link href="/use-cases" className="text-sm text-muted-foreground hover:text-foreground transition flex items-center gap-1">
             <ArrowLeft className="size-3.5" /> All use cases
           </Link>
         </div>
       </header>
 
       <main className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 py-12 sm:py-20">
-
-        {/* Hero */}
         <div className="mb-12">
           <div className="size-12 rounded-xl bg-accent/10 text-accent inline-flex items-center justify-center mb-5">
             <Icon className="size-6" />
@@ -374,7 +270,6 @@ function UseCasePage() {
           <p className="text-muted-foreground leading-relaxed max-w-2xl text-base sm:text-lg">{page.intro}</p>
         </div>
 
-        {/* Metrics */}
         <div className="grid grid-cols-3 gap-4 mb-14">
           {page.metrics.map(({ value, label }) => (
             <div key={label} className="rounded-2xl border border-border bg-surface/40 p-5 text-center">
@@ -384,7 +279,6 @@ function UseCasePage() {
           ))}
         </div>
 
-        {/* Why it works */}
         <div className="rounded-2xl border border-accent/20 bg-accent/5 p-6 sm:p-8 mb-14">
           <h2 className="font-semibold text-foreground mb-2 flex items-center gap-2">
             <Lightbulb className="size-4 text-accent" /> Why LeadCraft works for this
@@ -392,7 +286,6 @@ function UseCasePage() {
           <p className="text-muted-foreground leading-relaxed">{page.why}</p>
         </div>
 
-        {/* Step by step */}
         <div className="mb-14">
           <h2 className="serif text-2xl sm:text-3xl text-foreground mb-8">Step-by-step guide</h2>
           <div className="space-y-5">
@@ -413,7 +306,6 @@ function UseCasePage() {
           </div>
         </div>
 
-        {/* Example */}
         <div className="mb-14">
           <h2 className="serif text-2xl sm:text-3xl text-foreground mb-6">Real example</h2>
           <div className="rounded-2xl border border-border bg-surface/50 overflow-hidden">
@@ -435,7 +327,6 @@ function UseCasePage() {
           </div>
         </div>
 
-        {/* Tips */}
         <div className="mb-14">
           <h2 className="serif text-2xl sm:text-3xl text-foreground mb-6">Pro tips</h2>
           <div className="space-y-3">
@@ -450,7 +341,6 @@ function UseCasePage() {
           </div>
         </div>
 
-        {/* FAQ */}
         <div className="mb-14">
           <h2 className="serif text-2xl sm:text-3xl text-foreground mb-6">Frequently asked questions</h2>
           <div className="space-y-4">
@@ -463,25 +353,22 @@ function UseCasePage() {
           </div>
         </div>
 
-        {/* CTA */}
         <div className="rounded-3xl bg-primary text-primary-foreground p-8 sm:p-12 text-center mb-12">
           <h2 className="serif text-3xl sm:text-4xl mb-3">Ready to try it?</h2>
           <p className="text-primary-foreground/80 mb-7 max-w-lg mx-auto">
             Generate your first {page.title.toLowerCase()} pitch in under 5 seconds. Free — no credit card needed.
           </p>
           <Button size="lg" asChild className="bg-background text-foreground hover:bg-background/90 h-12 px-8 font-semibold">
-            <Link to="/auth">Start free <ArrowRight className="size-4 ml-1.5" /></Link>
+            <Link href="/auth">Start free <ArrowRight className="size-4 ml-1.5" /></Link>
           </Button>
         </div>
 
-        {/* Next use case */}
         <div className="border-t border-border pt-8 flex items-center justify-between">
-          <Link to="/use-cases" className="text-sm text-muted-foreground hover:text-foreground transition flex items-center gap-1.5">
+          <Link href="/use-cases" className="text-sm text-muted-foreground hover:text-foreground transition flex items-center gap-1.5">
             <ArrowLeft className="size-3.5" /> All use cases
           </Link>
           <Link
-            to={`/use-cases/${page.next}` as "/use-cases/$slug"}
-            params={{ slug: page.next }}
+            href={`/use-cases/${page.next}`}
             className="text-sm text-accent hover:underline flex items-center gap-1.5"
           >
             Next: {NEXT_LABELS[page.next]} <ChevronRight className="size-3.5" />
