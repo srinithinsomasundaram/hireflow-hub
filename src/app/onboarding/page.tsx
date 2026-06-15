@@ -1,5 +1,7 @@
 "use client";
 
+export const dynamic = "force-dynamic";
+
 import { useState, useEffect, useCallback } from "react";
 import { saveOnboarding, getOnboardingStatus } from "@/lib/onboarding.functions";
 import { Button } from "@/components/ui/button";
