@@ -71,7 +71,7 @@ export default function AuthPage() {
           type: "email",
         });
         if (error) throw error;
-        window.location.replace("/dashboard");
+        window.location.replace(result.isNewUser ? "/onboarding" : "/dashboard");
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Google sign-in failed";
         if (msg.includes("EMAIL_PROVIDER_EXISTS")) {

@@ -43,7 +43,7 @@ type GoogleTokenPayload = {
  * find-or-create the Supabase user, and return a magic-link token hash the
  * client can exchange for a real session via supabase.auth.verifyOtp().
  */
-export async function googleSignIn(input: { idToken: string }): Promise<{ tokenHash: string; userId: string; email: string }> {
+export async function googleSignIn(input: { idToken: string }): Promise<{ tokenHash: string; userId: string; email: string; isNewUser: boolean }> {
   const { idToken } = z.object({ idToken: z.string().min(1) }).parse(input);
 
   const supabaseUrl = process.env.SUPABASE_URL;
@@ -77,14 +77,12 @@ export async function googleSignIn(input: { idToken: string }): Promise<{ tokenH
   });
 
   let userId: string;
+  let isNewUser = false;
 
   const lookupByEmail = async () => {
-    const resp = await fetch(
-      `${supabaseUrl}/auth/v1/admin/users?email=${encodeURIComponent(email)}`,
-      { headers: { apikey: serviceRoleKey!, Authorization: `Bearer ${serviceRoleKey}` } },
-    );
-    const body = (await resp.json()) as { users?: { id: string; identities?: { provider: string }[] }[] };
-    return body.users?.find((u) => u.identities !== undefined) ?? null;
+    const { data, error } = await admin.auth.admin.listUsers({ perPage: 1000 });
+    if (error) return null;
+    return data.users.find((u) => u.email === email && u.identities !== undefined) ?? null;
   };
 
   const { data: created, error: createErr } = await admin.auth.admin.createUser({
@@ -100,6 +98,7 @@ export async function googleSignIn(input: { idToken: string }): Promise<{ tokenH
 
   if (created?.user) {
     userId = created.user.id;
+    isNewUser = true;
   } else {
     const existing = await lookupByEmail();
     if (!existing) throw new Error(createErr?.message ?? "Could not find or create user");
@@ -112,10 +111,10 @@ export async function googleSignIn(input: { idToken: string }): Promise<{ tokenH
     userId = existing.id;
   }
 
+  // redirectTo is not used in our verifyOtp flow — omit to avoid URL allowlist issues
   const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
     type: "magiclink",
     email,
-    options: { redirectTo: `${supabaseUrl}/dashboard` },
   });
 
   if (linkErr || !linkData?.properties?.hashed_token) {
@@ -126,5 +125,6 @@ export async function googleSignIn(input: { idToken: string }): Promise<{ tokenH
     tokenHash: linkData.properties.hashed_token,
     userId,
     email,
+    isNewUser,
   };
 }

@@ -127,7 +127,11 @@ function SignupDialog({
       const result = await googleSignIn({ idToken: response.credential });
       const { error } = await supabase.auth.verifyOtp({ token_hash: result.tokenHash, type: "email" });
       if (error) throw error;
-      onSuccess();
+      if (result.isNewUser) {
+        window.location.replace("/onboarding");
+      } else {
+        onSuccess();
+      }
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Google sign-in failed";
       if (msg.includes("EMAIL_PROVIDER_EXISTS")) {
