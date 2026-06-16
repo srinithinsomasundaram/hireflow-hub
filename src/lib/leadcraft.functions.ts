@@ -34,22 +34,17 @@ async function getAuthenticatedClient() {
     throw new Error("Missing Supabase environment variables");
   }
 
-  // Try to get the token from cookies
-  const accessToken = cookieStore.get("sb-access-token")?.value
-    || cookieStore.get("supabase-auth-token")?.value;
-
-  // Find any supabase auth cookie (they have dynamic names like sb-<project-ref>-auth-token)
-  let token = accessToken;
-  if (!token) {
-    const allCookies = cookieStore.getAll();
-    const authCookie = allCookies.find(c => c.name.includes("-auth-token") && c.name.startsWith("sb-"));
-    if (authCookie) {
-      try {
-        const parsed = JSON.parse(authCookie.value);
-        token = Array.isArray(parsed) ? parsed[0] : parsed.access_token;
-      } catch {
-        token = authCookie.value;
-      }
+  let token: string | undefined;
+  const allCookies = cookieStore.getAll();
+  const authCookie = allCookies.find(c => c.name.startsWith("sb-") && c.name.endsWith("-auth-token"));
+  if (authCookie) {
+    let src = authCookie.value;
+    try { src = decodeURIComponent(src); } catch { /* keep as-is */ }
+    try {
+      const parsed = JSON.parse(src);
+      token = Array.isArray(parsed) ? parsed[0] : parsed.access_token;
+    } catch {
+      token = src;
     }
   }
 

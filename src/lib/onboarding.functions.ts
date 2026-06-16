@@ -21,19 +21,16 @@ async function getCurrentUserId(): Promise<string> {
   let token: string | undefined;
 
   const allCookies = cookieStore.getAll();
-  const authCookie = allCookies.find(c => c.name.includes("-auth-token") && c.name.startsWith("sb-"));
+  const authCookie = allCookies.find(c => c.name.startsWith("sb-") && c.name.endsWith("-auth-token"));
   if (authCookie) {
+    let src = authCookie.value;
+    try { src = decodeURIComponent(src); } catch { /* keep as-is */ }
     try {
-      const parsed = JSON.parse(authCookie.value);
+      const parsed = JSON.parse(src);
       token = Array.isArray(parsed) ? parsed[0] : parsed.access_token;
     } catch {
-      token = authCookie.value;
+      token = src;
     }
-  }
-
-  if (!token) {
-    token = cookieStore.get("sb-access-token")?.value
-      || cookieStore.get("supabase-auth-token")?.value;
   }
 
   if (!token) throw new Error("Unauthorized: No session token found");

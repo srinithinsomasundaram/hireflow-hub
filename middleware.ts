@@ -3,19 +3,21 @@ import type { NextRequest } from "next/server";
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const token = request.cookies.get("sb-access-token")?.value 
-    || request.cookies.get("supabase-auth-token")?.value;
-  
-  const authRoutes = ["/auth", "/forgot-password", "/reset-password"];
+
+  // Supabase v2 stores the session in a cookie named sb-<project-ref>-auth-token.
+  // The old names (sb-access-token, supabase-auth-token) are never set by the client.
+  const authCookie = request.cookies
+    .getAll()
+    .find((c) => c.name.startsWith("sb-") && c.name.endsWith("-auth-token"));
+  const token = authCookie?.value;
+
   const protectedRoutes = ["/dashboard", "/onboarding", "/settings", "/admin"];
-  
-  const isProtected = protectedRoutes.some(r => pathname.startsWith(r));
-  const isAuth = authRoutes.some(r => pathname.startsWith(r));
-  
+  const isProtected = protectedRoutes.some((r) => pathname.startsWith(r));
+
   if (isProtected && !token) {
     return NextResponse.redirect(new URL("/auth", request.url));
   }
-  
+
   return NextResponse.next();
 }
 
