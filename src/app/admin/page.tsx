@@ -5,13 +5,10 @@ export const dynamic = "force-dynamic";
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { getAdminDashboard, setUserPremium, type AdminUser } from "@/lib/admin.functions";
-import { supabase } from "@/integrations/supabase/client";
+import { getAdminDashboard, getIsAdmin, setUserPremium, type AdminUser } from "@/lib/admin.functions";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Flame, Users, Zap, FileText, ArrowLeft, Crown, Shield, Loader2 } from "lucide-react";
-
-const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL as string | undefined;
 
 type DashboardData = {
   users: AdminUser[];
@@ -26,10 +23,8 @@ export default function AdminPage() {
   const [togglingId, setTogglingId] = useState<string | null>(null);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: userData }) => {
-      if (userData.user?.email !== ADMIN_EMAIL) {
-        router.replace("/dashboard");
-      }
+    getIsAdmin().then((isAdmin) => {
+      if (!isAdmin) router.replace("/dashboard");
     });
   }, [router]);
 

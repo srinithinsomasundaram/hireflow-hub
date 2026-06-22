@@ -14,6 +14,16 @@ async function assertAdmin(userId: string) {
   }
 }
 
+export async function getIsAdmin(): Promise<boolean> {
+  try {
+    const userId = await getAuthenticatedUserId();
+    await assertAdmin(userId);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export type AdminUser = {
   id: string;
   email: string;
