@@ -4,6 +4,7 @@ export const dynamic = "force-dynamic";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { supabase } from "@/integrations/supabase/client";
 import { googleSignIn, checkEmailProvider } from "@/lib/google-auth.functions";
 import { Input } from "@/components/ui/input";
@@ -12,7 +13,8 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Flame, Loader2 } from "lucide-react";
 
-const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID as string | undefined;
+const _rawGoogleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+const GOOGLE_CLIENT_ID = _rawGoogleClientId && !_rawGoogleClientId.includes("<") ? _rawGoogleClientId : undefined;
 
 declare global {
   interface Window {
@@ -45,6 +47,7 @@ declare global {
 }
 
 export default function AuthPage() {
+  const router = useRouter();
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -57,9 +60,9 @@ export default function AuthPage() {
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
-      if (data.session) window.location.replace("/dashboard");
+      if (data.session) router.replace("/dashboard");
     });
-  }, []);
+  }, [router]);
 
   const handleGoogleCredential = useCallback(
     async (response: { credential: string }) => {
@@ -71,7 +74,7 @@ export default function AuthPage() {
           type: "email",
         });
         if (error) throw error;
-        window.location.replace(result.isNewUser ? "/onboarding" : "/dashboard");
+        router.replace(result.isNewUser ? "/onboarding" : "/dashboard");
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Google sign-in failed";
         if (msg.includes("EMAIL_PROVIDER_EXISTS")) {
@@ -141,19 +144,26 @@ export default function AuthPage() {
     setLoading(true);
     try {
       if (mode === "signup") {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: { emailRedirectTo: `${window.location.origin}/dashboard` },
         });
         if (error) throw error;
+        if (!data.session) {
+          // Email confirmation required — no session until confirmed
+          toast.success("Account created! Check your email to confirm, then sign in.");
+          setLoading(false);
+          setMode("signin");
+          return;
+        }
         toast.success("Account created. You're in.");
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
         toast.success("Welcome back.");
       }
-      window.location.replace("/dashboard");
+      router.replace("/dashboard");
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Something went wrong";
       if (

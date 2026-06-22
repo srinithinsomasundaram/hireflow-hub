@@ -44,7 +44,7 @@ declare global {
   }
 }
 
-const SITE_URL = "https://leadcraftai.com";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://leadcraftai.com";
 
 const FAQ_SCHEMA = {
   "@context": "https://schema.org",
@@ -108,6 +108,7 @@ function SignupDialog({
   onSuccess: () => void;
   initialMode?: "signup" | "signin";
 }) {
+  const router = useRouter();
   const [mode, setMode] = useState<DialogMode>(initialMode);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -128,7 +129,7 @@ function SignupDialog({
       const { error } = await supabase.auth.verifyOtp({ token_hash: result.tokenHash, type: "email" });
       if (error) throw error;
       if (result.isNewUser) {
-        window.location.replace("/onboarding");
+        router.replace("/onboarding");
       } else {
         onSuccess();
       }
@@ -141,7 +142,7 @@ function SignupDialog({
       }
       setLoading(false);
     }
-  }, [onSuccess]);
+  }, [onSuccess, router]);
 
   useEffect(() => {
     if (!open || !GOOGLE_CLIENT_ID || mode === "sent") return;

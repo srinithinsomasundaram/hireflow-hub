@@ -2,8 +2,7 @@
 
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
-import { cookies } from "next/headers";
-import type { Database } from "@/integrations/supabase/types";
+import { getAuthenticatedUserId } from "@/lib/auth-token.server";
 
 export type PlanDef = {
   id: number;
@@ -18,7 +17,7 @@ export type PlanDef = {
 
 export async function getPlans(): Promise<PlanDef[]> {
   const supabaseUrl = process.env.SUPABASE_URL!;
-  const anonKey = process.env.SUPABASE_PUBLISHABLE_KEY!;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
   const client = createClient(supabaseUrl, anonKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
@@ -28,34 +27,6 @@ export async function getPlans(): Promise<PlanDef[]> {
     .order("id");
   if (error) throw new Error(error.message);
   return (data ?? []) as PlanDef[];
-}
-
-async function getCurrentUserId(): Promise<string> {
-  const cookieStore = await cookies();
-  const supabaseUrl = process.env.SUPABASE_URL!;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE!;
-
-  let token: string | undefined;
-  const allCookies = cookieStore.getAll();
-  const authCookie = allCookies.find(c => c.name.startsWith("sb-") && c.name.endsWith("-auth-token"));
-  if (authCookie) {
-    let src = authCookie.value;
-    try { src = decodeURIComponent(src); } catch { /* keep as-is */ }
-    try {
-      const parsed = JSON.parse(src);
-      token = Array.isArray(parsed) ? parsed[0] : parsed.access_token;
-    } catch {
-      token = src;
-    }
-  }
-  if (!token) throw new Error("Unauthorized: No session token found");
-
-  const admin = createClient<Database>(supabaseUrl, serviceRoleKey, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
-  const { data: { user }, error } = await admin.auth.getUser(token);
-  if (error || !user) throw new Error("Unauthorized: Invalid or expired session");
-  return user.id;
 }
 
 const UpdatePlanInput = z.object({
@@ -78,7 +49,7 @@ export async function updatePlan(input: {
   cta: string;
 }) {
   const data = UpdatePlanInput.parse(input);
-  await getCurrentUserId(); // ensure authenticated
+  await getAuthenticatedUserId(); // ensure authenticated
 
   const supabaseUrl = process.env.SUPABASE_URL!;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE!;

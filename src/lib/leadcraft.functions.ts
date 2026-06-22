@@ -1,9 +1,7 @@
 "use server";
 
-import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
-import { cookies } from "next/headers";
-import type { Database } from "@/integrations/supabase/types";
+import { getAuthenticatedUser, adminClient } from "@/lib/auth-token.server";
 
 const FREE_LIMIT = 2;
 
@@ -24,46 +22,8 @@ const PitchSchema = z.object({
 export type Pitch = z.infer<typeof PitchSchema>;
 
 async function getAuthenticatedClient() {
-  const cookieStore = await cookies();
-  
-  const supabaseUrl = process.env.SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE;
-  const publishableKey = process.env.SUPABASE_PUBLISHABLE_KEY;
-
-  if (!supabaseUrl || !serviceRoleKey || !publishableKey) {
-    throw new Error("Missing Supabase environment variables");
-  }
-
-  let token: string | undefined;
-  const allCookies = cookieStore.getAll();
-  const authCookie = allCookies.find(c => c.name.startsWith("sb-") && c.name.endsWith("-auth-token"));
-  if (authCookie) {
-    let src = authCookie.value;
-    try { src = decodeURIComponent(src); } catch { /* keep as-is */ }
-    try {
-      const parsed = JSON.parse(src);
-      token = Array.isArray(parsed) ? parsed[0] : parsed.access_token;
-    } catch {
-      token = src;
-    }
-  }
-
-  if (!token) {
-    throw new Error("Unauthorized: No session token found");
-  }
-
-  // Use service role client but verify the user token
-  const admin = createClient<Database>(supabaseUrl, serviceRoleKey, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
-
-  // Verify the JWT and get user
-  const { data: { user }, error } = await admin.auth.getUser(token);
-  if (error || !user) {
-    throw new Error("Unauthorized: Invalid or expired session");
-  }
-
-  return { supabase: admin, userId: user.id, email: user.email };
+  const { userId, email } = await getAuthenticatedUser();
+  return { supabase: adminClient(), userId, email };
 }
 
 export async function getMyStatus() {

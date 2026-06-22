@@ -1,11 +1,9 @@
 "use server";
 
-import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
-import { cookies } from "next/headers";
 import crypto from "crypto";
 import Razorpay from "razorpay";
-import type { Database } from "@/integrations/supabase/types";
+import { getAuthenticatedUserId, adminClient } from "@/lib/auth-token.server";
 
 const PLANS: Record<string, { amount: number; label: string }> = {
   pro: { amount: 19900, label: "LeadCraft Pro — ₹199/mo" },
@@ -17,34 +15,6 @@ function razorpayClient() {
   const key_secret = process.env.RAZORPAY_KEY_SECRET;
   if (!key_id || !key_secret) throw new Error("Razorpay keys not configured");
   return new Razorpay({ key_id, key_secret });
-}
-
-async function getAuthenticatedUserId(): Promise<string> {
-  const cookieStore = await cookies();
-  const supabaseUrl = process.env.SUPABASE_URL!;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE!;
-
-  let token: string | undefined;
-  const allCookies = cookieStore.getAll();
-  const authCookie = allCookies.find(c => c.name.startsWith("sb-") && c.name.endsWith("-auth-token"));
-  if (authCookie) {
-    let src = authCookie.value;
-    try { src = decodeURIComponent(src); } catch { /* keep as-is */ }
-    try {
-      const parsed = JSON.parse(src);
-      token = Array.isArray(parsed) ? parsed[0] : parsed.access_token;
-    } catch {
-      token = src;
-    }
-  }
-  if (!token) throw new Error("Unauthorized: No session token found");
-
-  const admin = createClient<Database>(supabaseUrl, serviceRoleKey, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
-  const { data: { user }, error } = await admin.auth.getUser(token);
-  if (error || !user) throw new Error("Unauthorized: Invalid or expired session");
-  return user.id;
 }
 
 export async function createOrder(input: { plan: "pro" | "agency" }) {
@@ -69,8 +39,6 @@ export async function createOrder(input: { plan: "pro" | "agency" }) {
       `Razorpay order error: ${e?.error?.description ?? e?.error?.reason ?? JSON.stringify(err)}`
     );
   }
-
-  console.log("[Razorpay] order created:", order.id, "key:", process.env.RAZORPAY_KEY_ID);
 
   return {
     orderId: order.id,
@@ -103,19 +71,11 @@ export async function verifyAndActivate(input: {
     .update(`${data.razorpay_order_id}|${data.razorpay_payment_id}`)
     .digest("hex");
 
-  console.log("[Razorpay] verifying signature — expected:", expected, "got:", data.razorpay_signature);
   if (expected !== data.razorpay_signature) {
-    console.error("[Razorpay] signature mismatch! order:", data.razorpay_order_id, "payment:", data.razorpay_payment_id);
     throw new Error("Payment verification failed — signature mismatch");
   }
 
-  const admin = createClient(
-    process.env.SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE!,
-    { auth: { persistSession: false, autoRefreshToken: false } },
-  );
-
-  const { error } = await admin
+  const { error } = await adminClient()
     .from("profiles")
     .update({ is_premium: true })
     .eq("id", userId);

@@ -3,6 +3,7 @@
 export const dynamic = "force-dynamic";
 
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { saveOnboarding, getOnboardingStatus } from "@/lib/onboarding.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,6 +26,7 @@ const NICHES = [
 ];
 
 export default function OnboardingPage() {
+  const router = useRouter();
   const [checking, setChecking] = useState(true);
   const [fullName, setFullName] = useState("");
   const [agencyName, setAgencyName] = useState("");
@@ -36,7 +38,7 @@ export default function OnboardingPage() {
     getOnboardingStatus()
       .then((status) => {
         if (status.completed) {
-          window.location.replace("/dashboard");
+          router.replace("/dashboard");
         } else {
           setChecking(false);
         }
@@ -58,7 +60,7 @@ export default function OnboardingPage() {
         serviceNiche: niche,
       });
       toast.success("All set! Let's craft some pitches.");
-      window.location.replace("/dashboard");
+      router.replace("/dashboard");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to save — try again");
     } finally {
@@ -92,7 +94,7 @@ export default function OnboardingPage() {
               try {
                 await saveOnboarding({ fullName: "", agencyName: "", serviceNiche: "" });
               } catch { /* ignore */ }
-              window.location.replace("/dashboard");
+              router.replace("/dashboard");
             }}
             className="text-xs text-muted-foreground hover:text-foreground transition"
           >
@@ -102,7 +104,7 @@ export default function OnboardingPage() {
             type="button"
             onClick={async () => {
               await supabase.auth.signOut();
-              window.location.replace("/auth");
+              router.replace("/auth");
             }}
             className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition"
           >
