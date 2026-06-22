@@ -5,6 +5,7 @@ export const dynamic = "force-dynamic";
 import { useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/integrations/supabase/client";
+import { checkEmailProvider } from "@/lib/google-auth.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,6 +21,13 @@ export default function ForgotPasswordPage() {
     e.preventDefault();
     setLoading(true);
     try {
+      const { provider } = await checkEmailProvider({ email: email.trim() });
+      if (provider === "none") {
+        throw new Error("No account found with that email address.");
+      }
+      if (provider === "google") {
+        throw new Error("This email is linked to Google sign-in. Use the Google button to sign in instead.");
+      }
       const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
         redirectTo: `${window.location.origin}/reset-password`,
       });
