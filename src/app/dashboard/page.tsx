@@ -42,6 +42,12 @@ import {
   Pencil,
   Shield,
   Settings,
+  Upload,
+  Download,
+  CheckCircle2,
+  XCircle,
+  FileText,
+  Layers,
 } from "lucide-react";
 
 const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL as string | undefined;
@@ -98,6 +104,7 @@ export default function Dashboard() {
   const [observedGaps, setObservedGaps] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const [dashMode, setDashMode] = useState<"single" | "bulk">("single");
 
   const [status, setStatus] = useState<StatusData | null>(null);
   const [statusLoading, setStatusLoading] = useState(true);
@@ -673,18 +680,46 @@ export default function Dashboard() {
       <main className="flex-1 min-w-0 relative">
         <div className="absolute inset-x-0 top-0 h-[400px] grid-bg pointer-events-none" />
         <div className="relative z-10 max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-10 space-y-6 sm:space-y-8">
-          <div>
-            <h1 className="serif text-3xl sm:text-4xl text-foreground">
-              {selected ? selected.business_name : "Craft a pitch"}
-            </h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              {selected
-                ? `${selected.niche} · ${selected.location}`
-                : "The more specific the gap, the sharper the pitch."}
-            </p>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h1 className="serif text-3xl sm:text-4xl text-foreground">
+                {selected ? selected.business_name : dashMode === "bulk" ? "Bulk generate" : "Craft a pitch"}
+              </h1>
+              <p className="text-sm text-muted-foreground mt-1">
+                {selected
+                  ? `${selected.niche} · ${selected.location}`
+                  : dashMode === "bulk"
+                  ? "Upload a CSV and generate pitches for all your prospects at once."
+                  : "The more specific the gap, the sharper the pitch."}
+              </p>
+            </div>
+            {!selected && (
+              <div className="flex shrink-0 rounded-lg border border-border bg-surface/40 p-0.5 text-xs font-medium">
+                <button
+                  onClick={() => setDashMode("single")}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md transition ${dashMode === "single" ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  <Zap className="size-3" /> Single
+                </button>
+                <button
+                  onClick={() => setDashMode("bulk")}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md transition ${dashMode === "bulk" ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  <Layers className="size-3" /> Bulk
+                </button>
+              </div>
+            )}
           </div>
 
-          {!selected && (
+          {!selected && dashMode === "bulk" && (
+            <BulkGenerate
+              isPremium={status?.isPremium ?? false}
+              onUpgrade={() => setUpgradeOpen(true)}
+              onDone={() => { fetchStatus(); fetchHistory(); }}
+            />
+          )}
+
+          {!selected && dashMode === "single" && (
             <form
               onSubmit={onSubmit}
               className="rounded-2xl border border-border bg-surface/50 p-4 sm:p-6 space-y-4"
@@ -954,6 +989,287 @@ function PitchCard({
         </div>
       </div>
       {children}
+    </div>
+  );
+}
+
+// ── CSV helpers ────────────────────────────────────────────────────────────────
+
+function parseCSVLine(line: string): string[] {
+  const result: string[] = [];
+  let current = "";
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    if (line[i] === '"') {
+      if (inQuotes && line[i + 1] === '"') { current += '"'; i++; }
+      else inQuotes = !inQuotes;
+    } else if (line[i] === "," && !inQuotes) {
+      result.push(current.trim());
+      current = "";
+    } else {
+      current += line[i];
+    }
+  }
+  result.push(current.trim());
+  return result;
+}
+
+type BulkRow = {
+  id: string;
+  businessName: string;
+  niche: string;
+  location: string;
+  observedGaps: string;
+  status: "pending" | "generating" | "done" | "error";
+  pitch?: Pitch;
+  error?: string;
+};
+
+function parseCSV(text: string): BulkRow[] {
+  const lines = text.trim().split(/\r?\n/).filter(Boolean);
+  if (lines.length < 2) return [];
+  const headers = parseCSVLine(lines[0]).map((h) =>
+    h.toLowerCase().replace(/\s+/g, "_").replace(/[^a-z_]/g, "")
+  );
+  const idx = (name: string) => headers.findIndex((h) => h.includes(name));
+  const bi = idx("business"), ni = idx("niche"), li = idx("location"), oi = idx("gap") !== -1 ? idx("gap") : idx("observed");
+  return lines.slice(1).map((line, i) => {
+    const vals = parseCSVLine(line);
+    return {
+      id: `row-${i}-${Date.now()}`,
+      businessName: (bi !== -1 ? vals[bi] : vals[0]) ?? "",
+      niche: (ni !== -1 ? vals[ni] : vals[1]) ?? "",
+      location: (li !== -1 ? vals[li] : vals[2]) ?? "",
+      observedGaps: (oi !== -1 ? vals[oi] : vals[3]) ?? "",
+      status: "pending" as const,
+    };
+  }).filter((r) => r.businessName.trim());
+}
+
+function downloadCSV(rows: BulkRow[]) {
+  const done = rows.filter((r) => r.status === "done" && r.pitch);
+  if (!done.length) return;
+  const escape = (s: string) => `"${s.replace(/"/g, '""')}"`;
+  const header = ["Business", "Niche", "Location", "Subject Line", "Email", "WhatsApp", "LinkedIn"].join(",");
+  const body = done.map((r) =>
+    [r.businessName, r.niche, r.location, r.pitch!.subjectLine, r.pitch!.emailFormat, r.pitch!.whatsAppFormat, r.pitch!.linkedInFormat]
+      .map(escape).join(",")
+  ).join("\n");
+  const blob = new Blob([header + "\n" + body], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = "leadcraft-pitches.csv"; a.click();
+  URL.revokeObjectURL(url);
+}
+
+function BulkGenerate({
+  isPremium,
+  onUpgrade,
+  onDone,
+}: {
+  isPremium: boolean;
+  onUpgrade: () => void;
+  onDone: () => void;
+}) {
+  const [rows, setRows] = useState<BulkRow[]>([]);
+  const [running, setRunning] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const abortRef = useRef(false);
+
+  const handleFile = (file: File) => {
+    if (!file.name.endsWith(".csv")) { toast.error("Please upload a .csv file"); return; }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const parsed = parseCSV(e.target?.result as string);
+      if (!parsed.length) { toast.error("No valid rows found — check your CSV format"); return; }
+      setRows(parsed);
+    };
+    reader.readAsText(file);
+  };
+
+  const onDrop = (e: React.DragEvent) => {
+    e.preventDefault(); setDragOver(false);
+    const file = e.dataTransfer.files[0];
+    if (file) handleFile(file);
+  };
+
+  const doneParsePitch = (raw: string, businessName: string): Pitch => {
+    try {
+      const obj = JSON.parse(raw);
+      if (obj && typeof obj === "object" && "emailFormat" in obj) return obj as Pitch;
+    } catch { /* legacy */ }
+    return { subjectLine: `Quick note for ${businessName}`, emailFormat: raw, whatsAppFormat: raw, linkedInFormat: raw.slice(0, 300) };
+  };
+
+  const runGeneration = async () => {
+    if (!rows.length) return;
+    abortRef.current = false;
+    setRunning(true);
+    let stopped = false;
+
+    for (const row of rows) {
+      if (abortRef.current) { stopped = true; break; }
+      if (row.status === "done") continue;
+      setRows((prev) => prev.map((r) => r.id === row.id ? { ...r, status: "generating" } : r));
+      try {
+        const result = await generatePitch({
+          businessName: row.businessName,
+          niche: row.niche,
+          location: row.location,
+          observedGaps: row.observedGaps || "No specific gaps noted",
+        });
+        const pitch = doneParsePitch(result.generated_pitch, result.business_name);
+        setRows((prev) => prev.map((r) => r.id === row.id ? { ...r, status: "done", pitch } : r));
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Failed";
+        setRows((prev) => prev.map((r) => r.id === row.id ? { ...r, status: "error", error: msg } : r));
+        if (msg.includes("LIMIT_EXCEEDED")) { toast.error("Free limit reached — upgrade for bulk generation."); onUpgrade(); break; }
+      }
+    }
+
+    setRunning(false);
+    if (!stopped) onDone();
+  };
+
+  const doneCount = rows.filter((r) => r.status === "done").length;
+  const errorCount = rows.filter((r) => r.status === "error").length;
+  const totalCount = rows.length;
+  const progress = totalCount > 0 ? Math.round(((doneCount + errorCount) / totalCount) * 100) : 0;
+
+  const SAMPLE_CSV = `business_name,niche,location,observed_gaps\nBrio Pizzeria,Italian restaurant,Asheville NC,No online ordering slow mobile site\nThe Coffee Corner,Café,Brooklyn NY,No social media presence outdated menu`;
+
+  if (!rows.length) {
+    return (
+      <div className="space-y-4">
+        <div
+          onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={onDrop}
+          onClick={() => fileRef.current?.click()}
+          className={`cursor-pointer rounded-2xl border-2 border-dashed transition p-10 flex flex-col items-center gap-3 text-center ${dragOver ? "border-accent bg-accent/5" : "border-border hover:border-accent/50 hover:bg-surface/60"}`}
+        >
+          <Upload className="size-8 text-muted-foreground" />
+          <div>
+            <p className="text-sm font-medium text-foreground">Drop your CSV here or click to upload</p>
+            <p className="text-xs text-muted-foreground mt-1">One prospect per row · Max ~50 rows recommended</p>
+          </div>
+          <input ref={fileRef} type="file" accept=".csv" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
+        </div>
+        <div className="rounded-xl border border-border bg-surface/30 p-4 flex items-start gap-3">
+          <FileText className="size-4 text-muted-foreground shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-medium text-foreground mb-1">Required CSV columns</p>
+            <code className="text-xs text-muted-foreground">business_name, niche, location, observed_gaps</code>
+          </div>
+          <button
+            onClick={() => {
+              const blob = new Blob([SAMPLE_CSV], { type: "text/csv" });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a"); a.href = url; a.download = "leadcraft-template.csv"; a.click();
+              URL.revokeObjectURL(url);
+            }}
+            className="text-xs text-accent hover:underline shrink-0"
+          >
+            Download template
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Progress bar */}
+      {running && (
+        <div className="rounded-xl border border-border bg-surface/40 p-4 space-y-2">
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-muted-foreground">Generating pitches…</span>
+            <span className="font-medium text-foreground">{doneCount + errorCount} / {totalCount}</span>
+          </div>
+          <div className="h-1.5 rounded-full bg-border overflow-hidden">
+            <div className="h-full bg-accent rounded-full transition-all duration-500" style={{ width: `${progress}%` }} />
+          </div>
+        </div>
+      )}
+
+      {/* Action bar */}
+      <div className="flex items-center gap-2 flex-wrap">
+        {!running && doneCount === 0 && (
+          <Button onClick={runGeneration} className="bg-primary text-primary-foreground hover:bg-primary/90 h-9 font-medium">
+            <Zap className="size-3.5 mr-1.5" /> Generate {totalCount} pitch{totalCount !== 1 ? "es" : ""}
+          </Button>
+        )}
+        {running && (
+          <Button variant="outline" onClick={() => { abortRef.current = true; }} className="h-9 text-destructive border-destructive/40 hover:bg-destructive/5">
+            Stop
+          </Button>
+        )}
+        {!running && doneCount > 0 && (
+          <>
+            <Button onClick={() => downloadCSV(rows)} className="bg-accent text-accent-foreground hover:bg-accent/90 h-9 font-medium">
+              <Download className="size-3.5 mr-1.5" /> Download {doneCount} pitch{doneCount !== 1 ? "es" : ""} CSV
+            </Button>
+            {(doneCount + errorCount) < totalCount && (
+              <Button onClick={runGeneration} variant="outline" className="h-9">
+                <Zap className="size-3.5 mr-1.5" /> Resume
+              </Button>
+            )}
+          </>
+        )}
+        <button
+          onClick={() => setRows([])}
+          className="ml-auto text-xs text-muted-foreground hover:text-foreground transition"
+        >
+          Clear · upload new CSV
+        </button>
+      </div>
+
+      {/* Rows */}
+      <div className="rounded-2xl border border-border overflow-hidden divide-y divide-border">
+        {rows.map((row) => (
+          <div key={row.id} className="p-4 flex items-start gap-3 bg-surface/30">
+            <div className="mt-0.5 shrink-0">
+              {row.status === "pending" && <div className="size-4 rounded-full border-2 border-border" />}
+              {row.status === "generating" && <Loader2 className="size-4 text-accent animate-spin" />}
+              {row.status === "done" && <CheckCircle2 className="size-4 text-green-500" />}
+              {row.status === "error" && <XCircle className="size-4 text-destructive" />}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-baseline gap-2 flex-wrap">
+                <span className="text-sm font-medium text-foreground">{row.businessName}</span>
+                {row.niche && <span className="text-xs text-muted-foreground">{row.niche}</span>}
+                {row.location && <span className="text-xs text-muted-foreground">· {row.location}</span>}
+              </div>
+              {row.status === "error" && (
+                <p className="text-xs text-destructive mt-0.5">{row.error}</p>
+              )}
+              {row.status === "done" && row.pitch && (
+                <div className="mt-2 space-y-1.5">
+                  <p className="text-xs font-medium text-accent">{row.pitch.subjectLine}</p>
+                  <p className="text-xs text-muted-foreground line-clamp-2">{row.pitch.emailFormat}</p>
+                  <div className="flex gap-2 flex-wrap mt-1">
+                    {(["Email", "WhatsApp", "LinkedIn"] as const).map((fmt) => {
+                      const text = fmt === "Email"
+                        ? `Subject: ${row.pitch!.subjectLine}\n\n${row.pitch!.emailFormat}`
+                        : fmt === "WhatsApp" ? row.pitch!.whatsAppFormat : row.pitch!.linkedInFormat;
+                      return (
+                        <button
+                          key={fmt}
+                          onClick={() => { navigator.clipboard.writeText(text); toast.success(`${fmt} copied`); }}
+                          className="inline-flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground border border-border rounded px-2 py-0.5 hover:bg-background/60 transition"
+                        >
+                          <Copy className="size-2.5" /> {fmt}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
