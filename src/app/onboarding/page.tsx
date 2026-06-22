@@ -44,7 +44,7 @@ export default function OnboardingPage() {
         }
       })
       .catch(() => setChecking(false));
-  }, []);
+  }, [router]);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

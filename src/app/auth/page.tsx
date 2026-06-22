@@ -85,7 +85,7 @@ export default function AuthPage() {
         setLoading(false);
       }
     },
-    [],
+    [router],
   );
 
   useEffect(() => {

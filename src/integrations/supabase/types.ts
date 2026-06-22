@@ -24,6 +24,8 @@ export type Database = {
           agency_name: string | null
           service_niche: string | null
           onboarding_completed: boolean
+          target_market: string | null
+          social_proof: string | null
         }
         Insert: {
           created_at?: string
@@ -34,6 +36,8 @@ export type Database = {
           agency_name?: string | null
           service_niche?: string | null
           onboarding_completed?: boolean
+          target_market?: string | null
+          social_proof?: string | null
         }
         Update: {
           created_at?: string
@@ -44,6 +48,8 @@ export type Database = {
           agency_name?: string | null
           service_niche?: string | null
           onboarding_completed?: boolean
+          target_market?: string | null
+          social_proof?: string | null
         }
         Relationships: []
       }
