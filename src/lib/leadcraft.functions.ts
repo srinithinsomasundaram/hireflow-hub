@@ -109,7 +109,7 @@ export async function generatePitch(input: {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("is_premium, agency_name, service_niche")
+    .select("is_premium, full_name, agency_name, service_niche, target_market, social_proof")
     .eq("id", userId)
     .maybeSingle();
 
@@ -125,14 +125,24 @@ export async function generatePitch(input: {
   const { generateText } = await import("ai");
   const gateway = createAiProvider(key);
 
+  const senderName = profile?.full_name || null;
   const senderAgency = profile?.agency_name || null;
   const senderNiche = profile?.service_niche || null;
+  const targetMarket = profile?.target_market || null;
+  const socialProof = profile?.social_proof || null;
 
-  const senderBlock = senderAgency && senderNiche
-    ? `SENDER CONTEXT:\nAgency / Company: ${senderAgency}\nService offered: ${senderNiche}\nAll pitches must be written from the perspective of ${senderAgency}.`
-    : senderAgency
-    ? `SENDER CONTEXT:\nAgency / Company: ${senderAgency}\nAll pitches must be written from the perspective of ${senderAgency}.`
-    : `SENDER CONTEXT:\nWrite from the perspective of a specialist freelancer or boutique agency.`;
+  const senderLines: string[] = ["SENDER CONTEXT:"];
+  if (senderName) senderLines.push(`Sender name: ${senderName}`);
+  if (senderAgency) senderLines.push(`Agency / Company: ${senderAgency}`);
+  if (senderNiche) senderLines.push(`Service offered: ${senderNiche}`);
+  if (targetMarket) senderLines.push(`Typical target market: ${targetMarket}`);
+  if (socialProof) senderLines.push(`Proof point to use (use this verbatim or very close to it): "${socialProof}"`);
+  if (senderAgency) senderLines.push(`All pitches must be written from the perspective of ${senderAgency}.`);
+  if (senderName && senderAgency) senderLines.push(`Sign off every email as: ${senderName} | ${senderAgency}`);
+  else if (senderName) senderLines.push(`Sign off every email with the sender's name: ${senderName}`);
+  if (!senderAgency && !senderNiche) senderLines.push("Write from the perspective of a specialist freelancer or boutique agency.");
+
+  const senderBlock = senderLines.join("\n");
 
   const prospectBlock = [
     `Business name: ${data.businessName}`,

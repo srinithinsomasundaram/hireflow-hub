@@ -9,7 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Flame, ArrowLeft, Loader2, Check, User, Building2, Briefcase } from "lucide-react";
+import { Flame, ArrowLeft, Loader2, Check, User, Building2, Briefcase, Target, Star } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 
 const NICHES = [
   "Web design & development",
@@ -29,6 +30,8 @@ export default function SettingsPage() {
   const [agencyName, setAgencyName] = useState("");
   const [serviceNiche, setServiceNiche] = useState("");
   const [customNiche, setCustomNiche] = useState("");
+  const [targetMarket, setTargetMarket] = useState("");
+  const [socialProof, setSocialProof] = useState("");
   const [saved, setSaved] = useState(false);
   const [profileLoading, setProfileLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -38,6 +41,8 @@ export default function SettingsPage() {
       .then((data) => {
         setFullName(data.fullName ?? "");
         setAgencyName(data.agencyName ?? "");
+        setTargetMarket(data.targetMarket ?? "");
+        setSocialProof(data.socialProof ?? "");
         const existing = data.serviceNiche ?? "";
         if (NICHES.includes(existing)) {
           setServiceNiche(existing);
@@ -58,6 +63,8 @@ export default function SettingsPage() {
         fullName: fullName.trim(),
         agencyName: agencyName.trim(),
         serviceNiche: serviceNiche === "Other" ? customNiche.trim() : serviceNiche,
+        targetMarket: targetMarket.trim(),
+        socialProof: socialProof.trim(),
       });
       setSaved(true);
       toast.success("Settings saved.");
@@ -176,6 +183,43 @@ export default function SettingsPage() {
                   )}
                 </div>
               </div>
+              <div className="p-5 sm:p-6 flex items-start gap-4">
+                <div className="mt-0.5 size-8 rounded-lg bg-muted/40 border border-border inline-flex items-center justify-center shrink-0">
+                  <Target className="size-4 text-muted-foreground" />
+                </div>
+                <div className="flex-1 space-y-1.5">
+                  <Label htmlFor="targetMarket" className="text-sm font-medium">Who do you pitch to?</Label>
+                  <p className="text-xs text-muted-foreground">The type of businesses you target. Used to sharpen the pitch angle.</p>
+                  <Input
+                    id="targetMarket"
+                    placeholder="e.g. restaurants & cafés, local service businesses, e-commerce brands"
+                    value={targetMarket}
+                    onChange={(e) => setTargetMarket(e.target.value)}
+                    className="h-10 bg-background/40"
+                  />
+                </div>
+              </div>
+
+              <div className="p-5 sm:p-6 flex items-start gap-4">
+                <div className="mt-0.5 size-8 rounded-lg bg-muted/40 border border-border inline-flex items-center justify-center shrink-0">
+                  <Star className="size-4 text-muted-foreground" />
+                </div>
+                <div className="flex-1 space-y-1.5">
+                  <Label htmlFor="socialProof" className="text-sm font-medium">Your best proof point</Label>
+                  <p className="text-xs text-muted-foreground">A concrete result you've delivered — number, timeframe, client type. The AI will weave this into every pitch.</p>
+                  <Textarea
+                    id="socialProof"
+                    placeholder="e.g. Helped 8 Mumbai restaurants increase Google reviews by 50% in 2 months"
+                    value={socialProof}
+                    onChange={(e) => setSocialProof(e.target.value)}
+                    maxLength={300}
+                    rows={2}
+                    className="bg-background/40 resize-none"
+                  />
+                  <p className="text-xs text-muted-foreground text-right">{socialProof.length}/300</p>
+                </div>
+              </div>
+
             </div>
 
             <div className="mt-5 flex items-center gap-3">
