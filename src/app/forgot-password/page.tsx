@@ -23,7 +23,13 @@ export default function ForgotPasswordPage() {
       const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
         redirectTo: `${window.location.origin}/reset-password`,
       });
-      if (error) throw error;
+      if (error) {
+        const msg = error.message?.toLowerCase() ?? "";
+        if (error.status === 500 || msg.includes("smtp") || msg.includes("email") || msg.includes("unexpected")) {
+          throw new Error("Email sending is not configured on this project. Contact the site owner or set up SMTP in Supabase.");
+        }
+        throw error;
+      }
       setSent(true);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Something went wrong");
