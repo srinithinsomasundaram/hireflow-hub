@@ -1,16 +1,8 @@
 import "./lib/error-capture";
 
-import * as Sentry from "@sentry/node";
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
 import { extractSubdomain, shouldRewriteForSubdomain } from "./lib/subdomain";
-
-// Initialize once at module load — no-op when SENTRY_DSN is absent.
-Sentry.init({
-  dsn: process.env.SENTRY_DSN ?? "",
-  tracesSampleRate: 0.1,
-  environment: process.env.NODE_ENV ?? "production",
-});
 
 // ─── Security headers ─────────────────────────────────────────────────────────
 
@@ -154,7 +146,6 @@ async function normalizeCatastrophicSsrResponse(response: Response): Promise<Res
 
   const err = consumeLastCapturedError() ?? new Error(`h3 swallowed SSR error: ${body}`);
   console.error(err);
-  Sentry.captureException(err);
   return new Response(renderErrorPage(), {
     status: 500,
     headers: { "content-type": "text/html; charset=utf-8" },
@@ -179,8 +170,7 @@ async function handleRequest(request: Request, env: unknown, ctx: unknown): Prom
     const normalized = await normalizeCatastrophicSsrResponse(response);
     return applySecurityHeaders(normalized, nonce);
   } catch (error) {
-    Sentry.captureException(error);
-    console.error(error);
+    console.error("[server]", error);
     return applySecurityHeaders(
       new Response(renderErrorPage(), {
         status: 500,

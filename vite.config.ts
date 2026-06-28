@@ -38,7 +38,4 @@ export default defineConfig(({ command }) => ({
   },
   css: { transformer: "lightningcss" },
   server: { host: "::", port: 8080 },
-  // @sentry/node uses Node.js built-ins — tell Vite SSR to load it natively
-  // instead of trying to bundle it through the module runner.
-  ssr: { external: ["@sentry/node", "@sentry/core"] },
 }));
