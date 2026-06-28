@@ -85,6 +85,30 @@ function redirectToSubdomain(request: Request): Response | null {
   );
 }
 
+// Paths allowed on tenant subdomains. Everything else redirects to /careers.
+const SUBDOMAIN_ALLOWED = [
+  "/careers",
+  "/c/",
+  "/_",
+  "/api",
+  "/oauth",
+];
+
+function enforceSubdomainScope(request: Request): Response | null {
+  const host = request.headers.get("host");
+  const subdomain = extractSubdomain(host);
+  if (!subdomain) return null; // main app — no restriction
+
+  const url = new URL(request.url);
+  const path = url.pathname;
+
+  // Allow root (will rewrite to /careers below), allowed prefixes, and static assets
+  if (path === "/" || SUBDOMAIN_ALLOWED.some((p) => path.startsWith(p))) return null;
+
+  // Anything else (e.g. /auth, /dashboard, /pipeline) → redirect to careers
+  return Response.redirect(`${url.protocol}//${url.host}/careers`, 302);
+}
+
 function rewriteForSubdomain(request: Request): Request {
   const host = request.headers.get("host");
   const subdomain = extractSubdomain(host);
@@ -163,6 +187,9 @@ async function handleRequest(request: Request, env: unknown, ctx: unknown): Prom
 
     const stripRedirect = stripRedundantSubdomainPath(request);
     if (stripRedirect) return applySecurityHeaders(stripRedirect, nonce);
+
+    const scopeRedirect = enforceSubdomainScope(request);
+    if (scopeRedirect) return applySecurityHeaders(scopeRedirect, nonce);
 
     const handler = await getServerEntry();
     const rewritten = rewriteForSubdomain(request);
