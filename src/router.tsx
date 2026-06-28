@@ -3,7 +3,7 @@ import { createRouter, createBrowserHistory, createHistory } from "@tanstack/rea
 import type { RouterHistory, HistoryLocation, ParsedHistoryState } from "@tanstack/history";
 import { routeTree } from "./routeTree.gen";
 
-const RESERVED = new Set(["www", "app", "api", "mail", "smtp", "ftp"]);
+const RESERVED = new Set(["www", "app", "api", "mail", "smtp", "ftp", "hireflow"]);
 
 // e.g. "hireflow.yesp.space" — must be VITE_ prefixed to be available in the browser bundle
 const APP_DOMAIN = import.meta.env.VITE_APP_DOMAIN ?? "";
