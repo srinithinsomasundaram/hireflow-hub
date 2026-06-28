@@ -7,10 +7,18 @@ const RESERVED = new Set(["www", "app", "api", "mail", "smtp", "ftp"]);
 
 function getSubdomainPrefix(): string {
   if (typeof window === "undefined") return "";
-  const parts = window.location.hostname.split(".");
-  if (parts.length < 2) return "";
+
+  const host = window.location.hostname;
+
+  // Don't rewrite localhost or raw IP addresses
+  if (host === "localhost" || /^\d+\.\d+\.\d+\.\d+$/.test(host)) return "";
+
+  const parts = host.split(".");
+  if (parts.length < 3) return "";
+
   const sub = parts[0];
   if (RESERVED.has(sub)) return "";
+
   return `/c/${sub}`;
 }
 
