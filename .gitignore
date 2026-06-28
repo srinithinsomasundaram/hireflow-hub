@@ -40,3 +40,14 @@ dist-ssr
 .next/
 out/
 .env.local
+
+# Stray Next.js artefacts (unrelated project)
+app/
+next.config.ts
+next-env.d.ts
+tsconfig.tsbuildinfo
+bun.lock
+
+# Lovable / agents metadata
+.lovable/
+AGENTS.md
