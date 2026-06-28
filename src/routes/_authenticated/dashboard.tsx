@@ -1,12 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Briefcase, Users, GitBranch, Calendar, ArrowUpRight, Plus, TrendingUp, ExternalLink, Copy, Check } from "lucide-react";
+import { Briefcase, Users, GitBranch, Calendar, ArrowUpRight, Plus, TrendingUp } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrentOrg } from "@/hooks/use-current-org";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { useState } from "react";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({ meta: [{ title: "Dashboard · HireFlow" }] }),
@@ -32,27 +31,8 @@ function initials(name: string) {
   return name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2);
 }
 
-function useCareersUrl(slug: string | undefined) {
-  if (!slug || typeof window === "undefined") return null;
-  const { hostname, port } = window.location;
-  const parts = hostname.split(".");
-  const base = parts.length >= 3 ? parts.slice(1).join(".") : hostname;
-  const domain = port ? `${base}:${port}` : base;
-  return `${window.location.protocol}//${slug}.${domain}/careers`;
-}
-
 function Dashboard() {
   const { data: org } = useCurrentOrg();
-  const careersUrl = useCareersUrl(org?.slug);
-  const [copied, setCopied] = useState(false);
-
-  function copyUrl() {
-    if (!careersUrl) return;
-    navigator.clipboard.writeText(careersUrl).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    });
-  }
 
   const { data: stats } = useQuery({
     enabled: !!org?.id,
@@ -104,33 +84,6 @@ function Dashboard() {
           <Button className="gap-1.5 shadow-sm"><Plus className="h-4 w-4" /> New job</Button>
         </Link>
       </div>
-
-      {/* Careers page URL banner */}
-      {careersUrl && (
-        <div className="flex items-center gap-3 rounded-lg border border-indigo-100 bg-indigo-50/60 px-4 py-3">
-          <ExternalLink className="h-4 w-4 shrink-0 text-indigo-500" />
-          <a
-            href={careersUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="text-sm text-indigo-700 font-medium truncate flex-1 hover:underline"
-          >{careersUrl}</a>
-          <button
-            onClick={copyUrl}
-            className="shrink-0 flex items-center gap-1.5 text-xs font-medium text-indigo-600 hover:text-indigo-800 transition-colors"
-          >
-            {copied ? <><Check className="h-3.5 w-3.5" />Copied</> : <><Copy className="h-3.5 w-3.5" />Copy</>}
-          </button>
-          <a
-            href={careersUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="shrink-0 text-xs font-medium text-indigo-600 hover:text-indigo-800 transition-colors"
-          >
-            Open ↗
-          </a>
-        </div>
-      )}
 
       {/* Stat cards */}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
