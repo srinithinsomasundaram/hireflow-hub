@@ -36,6 +36,5 @@ export default defineConfig(({ command }) => ({
     include: ["react", "react-dom", "react-dom/client", "react/jsx-runtime", "react/jsx-dev-runtime"],
     ignoreOutdatedRequests: true,
   },
-  css: { transformer: "lightningcss" },
   server: { host: "::", port: 8080 },
 }));
