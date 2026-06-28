@@ -5,20 +5,34 @@ import { routeTree } from "./routeTree.gen";
 
 const RESERVED = new Set(["www", "app", "api", "mail", "smtp", "ftp"]);
 
+// e.g. "hireflow.yesp.space" — must be VITE_ prefixed to be available in the browser bundle
+const APP_DOMAIN = import.meta.env.VITE_APP_DOMAIN ?? "";
+
 function getSubdomainPrefix(): string {
   if (typeof window === "undefined") return "";
 
   const host = window.location.hostname;
 
-  // Don't rewrite localhost or raw IP addresses
+  // Raw IPv4 or bare localhost — no subdomain
   if (host === "localhost" || /^\d+\.\d+\.\d+\.\d+$/.test(host)) return "";
 
-  const parts = host.split(".");
-  if (parts.length < 3) return "";
+  // If configured: exact root domain → no subdomain
+  if (APP_DOMAIN && host === APP_DOMAIN) return "";
 
+  // If configured: must be <sub>.<APP_DOMAIN>
+  if (APP_DOMAIN) {
+    const suffix = "." + APP_DOMAIN;
+    if (!host.endsWith(suffix)) return "";
+    const sub = host.slice(0, host.length - suffix.length);
+    if (!sub || sub.includes(".") || RESERVED.has(sub)) return "";
+    return `/c/${sub}`;
+  }
+
+  // Fallback for local dev without APP_DOMAIN (e.g. nexora.localhost)
+  const parts = host.split(".");
+  if (parts.length < 2) return "";
   const sub = parts[0];
   if (RESERVED.has(sub)) return "";
-
   return `/c/${sub}`;
 }
 

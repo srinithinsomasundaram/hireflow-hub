@@ -2,33 +2,47 @@
  * Extract the careers-site subdomain from a Host header value.
  * Returns null when running on the main app domain (no subdomain, www, app).
  *
- * Examples:
- *   nexora.hireflow.app        → "nexora"
+ * Examples (with VITE_APP_DOMAIN=hireflow.yesp.space):
+ *   nexora.hireflow.yesp.space → "nexora"
+ *   hireflow.yesp.space        → null  (root app domain)
  *   nexora.localhost:5173      → "nexora"
- *   nexora.lvh.me              → "nexora"
- *   hireflow.app               → null
- *   www.hireflow.app           → null
  *   localhost:5173             → null
+ *   35.244.2.197:8080          → null  (raw IP)
  */
+
+const RESERVED = new Set(["www", "app", "api", "mail", "smtp", "ftp"]);
+
+// e.g. "hireflow.yesp.space" — set via VITE_APP_DOMAIN env var
+const APP_DOMAIN =
+  (typeof process !== "undefined" ? process.env.VITE_APP_DOMAIN : undefined) ?? "";
+
 export function extractSubdomain(host: string | null | undefined): string | null {
   if (!host) return null;
 
   const hostname = host.split(":")[0]; // strip port
-  const parts = hostname.split(".");
 
-  // Single label (plain "localhost") — no subdomain
-  if (parts.length === 1) return null;
-
-  // IPv4 address — no subdomain
+  // Raw IPv4 address — no subdomain
   if (/^\d+\.\d+\.\d+\.\d+$/.test(hostname)) return null;
 
-  const sub = parts[0];
-  const RESERVED = new Set(["www", "app", "api", "mail", "smtp", "ftp"]);
-  if (RESERVED.has(sub)) return null;
+  // Single label (plain "localhost") — no subdomain
+  const parts = hostname.split(".");
+  if (parts.length === 1) return null;
 
-  // Two-label hostnames like "lvh.me" or "localhost" variants with no real subdomain
-  // are handled by the single-label guard above.  Anything with 2+ labels where
-  // the first part is non-reserved is treated as a subdomain.
+  // If configured: exact match is the root app → no subdomain
+  if (APP_DOMAIN && hostname === APP_DOMAIN) return null;
+
+  // If configured: must be <sub>.<APP_DOMAIN> to be a tenant subdomain
+  if (APP_DOMAIN) {
+    const suffix = "." + APP_DOMAIN;
+    if (!hostname.endsWith(suffix)) return null;
+    const sub = hostname.slice(0, hostname.length - suffix.length);
+    if (!sub || sub.includes(".") || RESERVED.has(sub)) return null;
+    return sub;
+  }
+
+  // Fallback for local dev without APP_DOMAIN set (e.g. nexora.localhost)
+  const sub = parts[0];
+  if (RESERVED.has(sub)) return null;
   return sub;
 }
 
