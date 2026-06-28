@@ -19,6 +19,9 @@ export function extractSubdomain(host: string | null | undefined): string | null
   // Single label (plain "localhost") — no subdomain
   if (parts.length === 1) return null;
 
+  // IPv4 address — no subdomain
+  if (/^\d+\.\d+\.\d+\.\d+$/.test(hostname)) return null;
+
   const sub = parts[0];
   const RESERVED = new Set(["www", "app", "api", "mail", "smtp", "ftp"]);
   if (RESERVED.has(sub)) return null;
