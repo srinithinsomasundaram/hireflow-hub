@@ -73,7 +73,6 @@ function Landing() {
           <div className="mt-8 grid gap-3 md:grid-cols-2">
             {[
               "Multi-tenant workspaces with team roles",
-              "Branded careers site at /c/your-company",
               "Resume uploads with secure storage",
               "Kanban hiring pipeline with stage automation",
               "Interview scheduling and feedback",
