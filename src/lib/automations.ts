@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import { sendSmtpEmail } from "./smtp";
-import { decryptSmtpConfig } from "./smtp-config";
+import { decryptSmtpConfig } from "./smtp-decrypt";
 import { sendSystemEmail } from "./system-email";
 
 type AutomationContext = {

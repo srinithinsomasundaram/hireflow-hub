@@ -2,7 +2,6 @@ import { createServerFn } from "@tanstack/react-start";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import type { Database } from "@/integrations/supabase/types";
-import { runAutomations } from "./automations";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const StageInput = z.object({
@@ -37,6 +36,8 @@ export const changeStageFn = createServerFn({ method: "POST" })
       .single();
 
     if (error) throw new Error(error.message);
+
+    const { runAutomations } = await import("./automations");
 
     // Fire stage_changed automations (don't await — best-effort)
     runAutomations("stage_changed", {

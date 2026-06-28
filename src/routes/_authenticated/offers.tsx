@@ -18,8 +18,6 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrentOrg } from "@/hooks/use-current-org";
 import { generateOfferLetter } from "@/lib/ai.functions";
-import { sendSmtpEmail } from "@/lib/smtp";
-import { decryptSmtpConfig } from "@/lib/smtp-config";
 import type { Database } from "@/integrations/supabase/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -83,6 +81,8 @@ export const sendOfferLetterFn = createServerFn({ method: "POST" })
       throw new Error("SMTP not configured. Go to Settings → Integrations to set up email.");
     }
 
+    const { decryptSmtpConfig } = await import("@/lib/smtp-decrypt");
+    const { sendSmtpEmail } = await import("@/lib/smtp");
     const smtp = decryptSmtpConfig(settings.smtp_config as Record<string, unknown>);
     if (!smtp.host || !smtp.username || !smtp.password) {
       throw new Error("SMTP settings are incomplete. Please check Settings → Integrations.");

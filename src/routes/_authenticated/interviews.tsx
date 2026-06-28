@@ -27,8 +27,6 @@ import {
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { Database } from "@/integrations/supabase/types";
-import { sendSmtpEmail, type SmtpConfig } from "@/lib/smtp";
-import { decryptSmtpConfig } from "@/lib/smtp-config";
 
 // ─── Server function: schedule + email ────────────────────────────────────────
 
@@ -100,6 +98,8 @@ export const scheduleInterviewFn = createServerFn({ method: "POST" })
 
     if (!settings?.smtp_enabled || !settings.smtp_config) return {};
 
+    const { decryptSmtpConfig } = await import("@/lib/smtp-decrypt");
+    const { sendSmtpEmail } = await import("@/lib/smtp");
     const smtp = decryptSmtpConfig(settings.smtp_config as Record<string, unknown>);
     if (!smtp.host || !smtp.username || !smtp.password) return {};
 

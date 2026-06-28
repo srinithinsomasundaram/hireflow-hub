@@ -1,7 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
-import { encryptValue, decryptValue } from "./encrypt";
 import type { Json } from "@/integrations/supabase/types";
 
 export type SmtpConfigDecrypted = {
@@ -12,18 +11,6 @@ export type SmtpConfigDecrypted = {
   from_name: string;
   from_email: string;
 };
-
-// Decrypts the SMTP password field if it was stored encrypted.
-export function decryptSmtpConfig(raw: Record<string, unknown>): SmtpConfigDecrypted {
-  return {
-    host: String(raw.host ?? ""),
-    port: String(raw.port ?? "587"),
-    username: String(raw.username ?? ""),
-    password: raw.password ? decryptValue(String(raw.password)) : "",
-    from_name: String(raw.from_name ?? ""),
-    from_email: String(raw.from_email ?? ""),
-  };
-}
 
 const SaveSmtpInput = z.object({
   organizationId: z.string().uuid(),
@@ -43,6 +30,7 @@ export const saveSmtpConfigFn = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => SaveSmtpInput.parse(d))
   .handler(async ({ data, context }) => {
+    const { encryptValue } = await import("./encrypt");
     const { supabase } = context;
 
     // Verify the caller belongs to this org
