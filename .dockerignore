@@ -1,0 +1,13 @@
+node_modules
+.git
+.gitignore
+.env
+.env.*
+.output
+.next
+.claude
+.lovable
+.vscode
+supabase/migrations
+*.log
+*.sh
