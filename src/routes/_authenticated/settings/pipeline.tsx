@@ -156,6 +156,7 @@ function PipelineSettings() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["org-settings"] });
+      qc.invalidateQueries({ queryKey: ["pipeline-stages"] });
       qc.invalidateQueries({ queryKey: ["pipeline"] });
       toast.success("Pipeline saved");
       setDirty(false);

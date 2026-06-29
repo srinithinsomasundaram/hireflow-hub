@@ -76,7 +76,7 @@ function Pipeline() {
 
   const { data: pipelineStages } = useQuery({
     enabled: !!org?.id,
-    queryKey: ["org-settings", org?.id],
+    queryKey: ["pipeline-stages", org?.id],
     queryFn: async () => {
       const { data } = await supabase
         .from("organization_settings")
