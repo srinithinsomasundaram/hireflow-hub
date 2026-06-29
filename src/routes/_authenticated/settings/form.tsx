@@ -123,7 +123,7 @@ function FormSettings() {
 
   const { data: s } = useQuery({
     enabled: !!org?.id,
-    queryKey: ["org-settings", org?.id],
+    queryKey: ["form-config", org?.id],
     queryFn: async () => {
       const { data } = await supabase
         .from("organization_settings")
@@ -165,6 +165,7 @@ function FormSettings() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["org-settings"] });
+      qc.invalidateQueries({ queryKey: ["form-config"] });
       toast.success("Form config saved");
     },
     onError: e => toast.error(e instanceof Error ? e.message : "Save failed"),
