@@ -9,6 +9,7 @@ const tabs = [
   { to: "/settings",              label: "Workspace" },
   { to: "/settings/branding",     label: "Branding" },
   { to: "/settings/pipeline",     label: "Pipeline" },
+  { to: "/settings/form",         label: "Application Form" },
   { to: "/settings/team",         label: "Team" },
   { to: "/settings/integrations", label: "Integrations" },
 ];

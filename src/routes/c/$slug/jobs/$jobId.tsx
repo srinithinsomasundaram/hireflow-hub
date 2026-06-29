@@ -11,6 +11,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { sendSystemEmail } from "@/lib/system-email";
 import { runAutomations } from "@/lib/automations";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
+import { mergeFormConfig } from "@/lib/form-config";
+import type { ApplicationFormFieldConfig } from "@/lib/form-config";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -32,7 +34,13 @@ export const getPublicJob = createServerFn({ method: "GET" })
       .from("jobs")
       .select("id, title, department, location, employment_type, salary_min, salary_max, salary_currency, description, requirements, organization_id, organizations(company_name, slug, logo_url)")
       .eq("id", data.jobId).eq("status", "published").maybeSingle();
-    return job;
+    if (!job) return null;
+    const { data: settings } = await sb
+      .from("organization_settings")
+      .select("form_config")
+      .eq("organization_id", job.organization_id)
+      .maybeSingle();
+    return { ...job, form_config: settings?.form_config ?? null };
   });
 
 // ─── Application submit server function ──────────────────────────────────────
@@ -380,13 +388,90 @@ function formatSalary(min: number, max: number) {
   return `₹${fmt(min)} – ₹${fmt(max)}`;
 }
 
+function DynamicFormFields({
+  fields,
+  form,
+  setForm,
+  resume,
+  setResume,
+}: {
+  fields: ApplicationFormFieldConfig[];
+  form: Record<string, string>;
+  setForm: (f: Record<string, string>) => void;
+  resume: File | null;
+  setResume: (f: File | null) => void;
+}) {
+  const gridFields = fields.filter(f => f.visible && f.key !== "resume" && f.key !== "cover_letter");
+  const resumeField = fields.find(f => f.key === "resume" && f.visible);
+  const coverField = fields.find(f => f.key === "cover_letter" && f.visible);
+
+  const inputProps: Record<string, { type?: string; step?: string; placeholder?: string }> = {
+    phone: { type: "tel", placeholder: "+91 98765 43210" },
+    linkedin_url: { placeholder: "https://linkedin.com/in/…" },
+    current_company: {},
+    experience_years: { type: "number", step: "0.5" },
+    expected_salary: { type: "number", placeholder: "e.g. 1200000" },
+    notice_period: { placeholder: "e.g. 2 months" },
+  };
+
+  return (
+    <>
+      {gridFields.length > 0 && (
+        <div className="grid gap-4 md:grid-cols-2">
+          {gridFields.map(f => (
+            <div key={f.key}>
+              <Label>{f.label}{f.required && <span className="ml-0.5 text-destructive">*</span>}</Label>
+              <Input
+                {...inputProps[f.key]}
+                required={f.required}
+                value={form[f.key] ?? ""}
+                onChange={e => setForm({ ...form, [f.key]: e.target.value })}
+              />
+            </div>
+          ))}
+        </div>
+      )}
+      {resumeField && (
+        <div>
+          <Label>{resumeField.label}{resumeField.required && <span className="ml-0.5 text-destructive">*</span>}</Label>
+          <div className="flex items-center gap-2 mt-1.5">
+            <Input
+              type="file"
+              accept=".pdf,.doc,.docx"
+              required={resumeField.required && !resume}
+              onChange={e => setResume(e.target.files?.[0] ?? null)}
+            />
+            {resume && (
+              <span className="text-xs text-muted-foreground inline-flex items-center gap-1">
+                <Upload className="h-3 w-3" />{resume.name}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+      {coverField && (
+        <div>
+          <Label>{coverField.label}{coverField.required && <span className="ml-0.5 text-destructive">*</span>}</Label>
+          <Textarea
+            rows={5}
+            required={coverField.required}
+            value={form.cover_letter ?? ""}
+            onChange={e => setForm({ ...form, cover_letter: e.target.value })}
+            placeholder="Tell us why you're interested…"
+          />
+        </div>
+      )}
+    </>
+  );
+}
+
 function JobPublic() {
   const job = Route.useLoaderData();
   const { slug } = Route.useParams();
-  const navigate = useNavigate();
+  useNavigate();
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<Record<string, string>>({
     full_name: "", email: "", phone: "", linkedin_url: "", current_company: "",
     experience_years: "", expected_salary: "", notice_period: "", cover_letter: "",
   });
@@ -395,6 +480,7 @@ function JobPublic() {
   if (!job) return <div className="grid min-h-screen place-items-center"><div className="text-center"><h1 className="text-2xl font-semibold">Job not found</h1><p className="mt-2 text-sm text-muted-foreground">This role may have closed.</p><Link to="/c/$slug" params={{ slug }} className="mt-4 inline-block underline">Back to careers</Link></div></div>;
 
   const org = (job as unknown as { organizations: { company_name: string; slug: string } }).organizations;
+  const formFields = mergeFormConfig((job as unknown as { form_config: unknown }).form_config);
 
   if (submitted) {
     return (
@@ -424,7 +510,6 @@ function JobPublic() {
     if (!job) return;
     setSubmitting(true);
     try {
-      // Resume upload is best-effort — a missing bucket shouldn't block the application
       let resumePath: string | null = null;
       if (resume) {
         const ext = resume.name.split(".").pop() ?? "pdf";
@@ -456,7 +541,6 @@ function JobPublic() {
       });
 
       if (result?.error) throw new Error(result.error);
-
       setSubmitted(true);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Submission failed. Please try again.");
@@ -478,9 +562,7 @@ function JobPublic() {
             {job.department && <span className="inline-flex items-center gap-1"><Briefcase className="h-3.5 w-3.5" />{job.department}</span>}
             {job.location && <span className="inline-flex items-center gap-1"><MapPin className="h-3.5 w-3.5" />{job.location}</span>}
             <span className="capitalize">{job.employment_type.replaceAll("_", " ")}</span>
-            {job.salary_min && job.salary_max && (
-                <span>{formatSalary(job.salary_min, job.salary_max)}</span>
-              )}
+            {job.salary_min && job.salary_max && <span>{formatSalary(job.salary_min, job.salary_max)}</span>}
           </div>
         </div>
 
@@ -497,26 +579,10 @@ function JobPublic() {
           <CardContent>
             <form onSubmit={submit} className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
-                <div><Label>Full name</Label><Input required value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} /></div>
-                <div><Label>Email</Label><Input type="email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>
-                <div><Label>Phone</Label><Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></div>
-                <div><Label>LinkedIn</Label><Input value={form.linkedin_url} onChange={(e) => setForm({ ...form, linkedin_url: e.target.value })} placeholder="https://linkedin.com/in/…" /></div>
-                <div><Label>Current company</Label><Input value={form.current_company} onChange={(e) => setForm({ ...form, current_company: e.target.value })} /></div>
-                <div><Label>Years of experience</Label><Input type="number" step="0.5" value={form.experience_years} onChange={(e) => setForm({ ...form, experience_years: e.target.value })} /></div>
-                <div><Label>Expected salary</Label><Input type="number" value={form.expected_salary} onChange={(e) => setForm({ ...form, expected_salary: e.target.value })} /></div>
-                <div><Label>Notice period</Label><Input value={form.notice_period} onChange={(e) => setForm({ ...form, notice_period: e.target.value })} placeholder="e.g. 2 months" /></div>
+                <div><Label>Full name <span className="text-destructive">*</span></Label><Input required value={form.full_name} onChange={e => setForm({ ...form, full_name: e.target.value })} /></div>
+                <div><Label>Email <span className="text-destructive">*</span></Label><Input type="email" required value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} /></div>
               </div>
-              <div>
-                <Label>Resume (PDF, DOC, DOCX)</Label>
-                <div className="flex items-center gap-2">
-                  <Input type="file" accept=".pdf,.doc,.docx" onChange={(e) => setResume(e.target.files?.[0] ?? null)} />
-                  {resume && <span className="text-xs text-muted-foreground inline-flex items-center gap-1"><Upload className="h-3 w-3" />{resume.name}</span>}
-                </div>
-              </div>
-              <div>
-                <Label>Cover letter (optional)</Label>
-                <Textarea rows={5} value={form.cover_letter} onChange={(e) => setForm({ ...form, cover_letter: e.target.value })} placeholder="Tell us why you're interested…" />
-              </div>
+              <DynamicFormFields fields={formFields} form={form} setForm={setForm} resume={resume} setResume={setResume} />
               <Button type="submit" disabled={submitting} className="w-full">{submitting ? "Submitting…" : "Submit application"}</Button>
             </form>
           </CardContent>
