@@ -127,7 +127,7 @@ export function ApplicationDrawer({ applicationId, onClose }: Props) {
 
   return (
     <Sheet open={!!applicationId} onOpenChange={open => { if (!open) onClose(); }}>
-      <SheetContent className="w-full sm:max-w-[480px] flex flex-col p-0 gap-0 overflow-hidden">
+      <SheetContent className="w-[50vw] max-w-[50vw] flex flex-col p-0 gap-0 overflow-hidden">
 
         {isLoading || !app ? (
           <div className="flex flex-1 items-center justify-center">
