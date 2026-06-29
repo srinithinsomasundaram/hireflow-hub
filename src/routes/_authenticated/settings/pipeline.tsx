@@ -15,17 +15,14 @@ import { useCurrentOrg } from "@/hooks/use-current-org";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { STAGES, type Stage } from "@/lib/stages";
+import type { PipelineStageConfig } from "@/lib/pipeline-config";
+
+export type { PipelineStageConfig };
 
 export const Route = createFileRoute("/_authenticated/settings/pipeline")({
   head: () => ({ meta: [{ title: "Pipeline · Settings · HireFlow" }] }),
   component: PipelineSettings,
 });
-
-export type PipelineStageConfig = {
-  id: Stage;
-  label: string;
-  visible: boolean;
-};
 
 const DEFAULT_CONFIG: PipelineStageConfig[] = STAGES.map(s => ({
   id: s.id,

@@ -12,7 +12,7 @@ import { changeStageFn } from "@/lib/automations.functions";
 import { useCurrentOrg } from "@/hooks/use-current-org";
 import { STAGES, type Stage } from "@/lib/stages";
 import { scoreApplication } from "@/lib/ai.functions";
-import type { PipelineStageConfig } from "@/routes/_authenticated/settings/pipeline";
+import type { PipelineStageConfig } from "@/lib/pipeline-config";
 
 export const Route = createFileRoute("/_authenticated/pipeline")({
   head: () => ({ meta: [{ title: "Pipeline · HireFlow" }] }),
