@@ -6,10 +6,11 @@ export const Route = createFileRoute("/_authenticated/settings")({
 });
 
 const tabs = [
-  { to: "/settings",             label: "Workspace" },
-  { to: "/settings/branding",    label: "Branding" },
-  { to: "/settings/team",        label: "Team" },
-  { to: "/settings/integrations",label: "Integrations" },
+  { to: "/settings",              label: "Workspace" },
+  { to: "/settings/branding",     label: "Branding" },
+  { to: "/settings/pipeline",     label: "Pipeline" },
+  { to: "/settings/team",         label: "Team" },
+  { to: "/settings/integrations", label: "Integrations" },
 ];
 
 function SettingsLayout() {

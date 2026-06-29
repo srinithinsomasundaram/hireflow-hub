@@ -448,6 +448,7 @@ export type Database = {
           crm_enabled: boolean | null
           custom_domain: string | null
           organization_id: string
+          pipeline_config: Json | null
           smtp_config: Json | null
           smtp_enabled: boolean | null
           updated_at: string
@@ -461,6 +462,7 @@ export type Database = {
           crm_enabled?: boolean | null
           custom_domain?: string | null
           organization_id: string
+          pipeline_config?: Json | null
           smtp_config?: Json | null
           smtp_enabled?: boolean | null
           updated_at?: string
@@ -474,6 +476,7 @@ export type Database = {
           crm_enabled?: boolean | null
           custom_domain?: string | null
           organization_id?: string
+          pipeline_config?: Json | null
           smtp_config?: Json | null
           smtp_enabled?: boolean | null
           updated_at?: string
