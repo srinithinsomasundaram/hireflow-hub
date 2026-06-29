@@ -7,6 +7,17 @@ import { Briefcase, MapPin, Building2, IndianRupee } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 
+type BrandConfig = {
+  hero_subtitle?: string | null;
+  hero_bg?: string | null;
+  hero_text?: string | null;
+  page_bg?: string | null;
+  heading_font?: string | null;
+  body_font?: string | null;
+  footer_text?: string | null;
+  footer_show_powered?: boolean | null;
+};
+
 function OrgLogo({ url, name }: { url: string | null | undefined; name: string }) {
   const [failed, setFailed] = useState(false);
   if (!url || failed) return <Building2 className="h-5 w-5 text-primary" />;
@@ -23,8 +34,6 @@ function OrgLogo({ url, name }: { url: string | null | undefined; name: string }
 function useFavicon(url: string | null | undefined) {
   useEffect(() => {
     if (!url) return;
-    // Remove any existing icon links injected server-side so the browser
-    // picks up the new one without stale-cache interference.
     document.querySelectorAll<HTMLLinkElement>("link[rel~='icon']").forEach(l => l.remove());
     const link = document.createElement("link");
     link.rel = "icon";
@@ -33,6 +42,22 @@ function useFavicon(url: string | null | undefined) {
     document.head.appendChild(link);
   }, [url]);
 }
+
+function useBrandFonts(heading: string, body: string) {
+  useEffect(() => {
+    const toLoad = [...new Set([heading, body])].filter(f => f !== "Inter" && f !== "system-ui");
+    if (toLoad.length === 0) return;
+    const id = "hf-gfonts";
+    if (document.getElementById(id)) return;
+    const link = document.createElement("link");
+    link.id = id;
+    link.rel = "stylesheet";
+    link.href = `https://fonts.googleapis.com/css2?${toLoad.map(f => `family=${f.replace(/ /g, "+")}:wght@300;400;500;600;700`).join("&")}&display=swap`;
+    document.head.appendChild(link);
+  }, [heading, body]);
+}
+
+function fontStack(f: string) { return `'${f}', system-ui, sans-serif`; }
 
 const Input = z.object({ slug: z.string().min(1).max(64) });
 
@@ -60,7 +85,7 @@ export const getOrgWithJobs = createServerFn({ method: "GET" })
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: settingsRows } = await (supabase as any)
       .rpc("get_org_public_settings", { p_org_id: org.id });
-    const settings = (settingsRows as Array<{ careers_tagline: string | null; brand_primary_color: string | null; brand_logo_url: string | null }>)?.[0] ?? null;
+    const settings = (settingsRows as Array<{ careers_tagline: string | null; brand_primary_color: string | null; brand_logo_url: string | null; brand_config: BrandConfig | null }>)?.[0] ?? null;
     return { org, jobs: jobs ?? [], settings };
   });
 
@@ -90,6 +115,12 @@ export const Route = createFileRoute("/c/$slug/careers/")({
 function CareersListing() {
   const data = Route.useLoaderData();
   useFavicon(data?.org.logo_url);
+
+  const cfg = (data?.settings?.brand_config ?? {}) as BrandConfig;
+  const headingFont = cfg.heading_font ?? "Inter";
+  const bodyFont = cfg.body_font ?? "Inter";
+  useBrandFonts(headingFont, bodyFont);
+
   if (!data) return (
     <div className="grid min-h-screen place-items-center">
       <div className="text-center">
@@ -100,32 +131,55 @@ function CareersListing() {
   );
 
   const { org, jobs, settings } = data;
+  const primary = settings?.brand_primary_color ?? "#10b981";
+  const heroBg = cfg.hero_bg ?? "#ffffff";
+  const heroText = cfg.hero_text ?? "#111827";
+  const pageBg = cfg.page_bg ?? "#f8fafc";
+  const heroSubtitle = cfg.hero_subtitle || "Open roles. Apply directly — we'll get back to you fast.";
+  const footerText = cfg.footer_text || null;
+  const showPowered = cfg.footer_show_powered ?? true;
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b">
-        <div className="mx-auto flex max-w-4xl items-center justify-between px-6 py-5">
+    <div className="min-h-screen" style={{ background: pageBg, fontFamily: fontStack(bodyFont) }}>
+
+      {/* Header */}
+      <header className="border-b bg-white/80 backdrop-blur-sm sticky top-0 z-10">
+        <div className="mx-auto flex max-w-4xl items-center justify-between px-6 py-4">
           <div className="flex items-center gap-2.5 font-semibold">
             <OrgLogo url={org.logo_url} name={org.company_name} />
             {org.company_name}
           </div>
           {org.website && (
-            <a className="text-sm text-muted-foreground hover:text-foreground" href={org.website} target="_blank" rel="noreferrer">
+            <a className="text-sm text-muted-foreground hover:text-foreground transition-colors" href={org.website} target="_blank" rel="noreferrer">
               Website ↗
             </a>
           )}
         </div>
       </header>
 
-      <section className="mx-auto max-w-4xl px-6 py-16">
-        <h1 className="text-4xl font-semibold tracking-tight">
-          {settings?.careers_tagline ?? `Join ${org.company_name}`}
-        </h1>
-        <p className="mt-3 text-muted-foreground">Open roles. Apply directly — we'll get back to you fast.</p>
+      {/* Hero */}
+      <section style={{ background: heroBg, color: heroText }}>
+        <div className="mx-auto max-w-4xl px-6 py-16 md:py-24">
+          <h1
+            className="text-4xl font-semibold tracking-tight md:text-5xl"
+            style={{ fontFamily: fontStack(headingFont), color: heroText }}
+          >
+            {settings?.careers_tagline ?? `Join ${org.company_name}`}
+          </h1>
+          <p className="mt-4 text-lg max-w-xl" style={{ color: heroText, opacity: 0.75 }}>
+            {heroSubtitle}
+          </p>
+          <div className="mt-6 flex items-center gap-2 text-sm" style={{ color: heroText, opacity: 0.6 }}>
+            <span>{jobs.length} open position{jobs.length !== 1 ? "s" : ""}</span>
+          </div>
+        </div>
+      </section>
 
-        <div className="mt-10 space-y-2">
+      {/* Jobs listing */}
+      <main className="mx-auto max-w-4xl px-6 py-10">
+        <div className="space-y-2">
           {jobs.length === 0 ? (
-            <div className="rounded-lg border bg-surface p-10 text-center text-sm text-muted-foreground">
+            <div className="rounded-xl border bg-white p-12 text-center text-sm text-muted-foreground">
               No open roles right now. Check back soon.
             </div>
           ) : jobs.map((j: {
@@ -137,14 +191,24 @@ function CareersListing() {
               key={j.id}
               to="/c/$slug/careers/jobs/$jobId"
               params={{ slug: org.slug, jobId: j.id }}
-              className="block rounded-lg border bg-surface p-5 transition-colors hover:bg-surface-2"
+              className="block rounded-xl border bg-white p-5 transition-all hover:shadow-md hover:-translate-y-px"
             >
               <div className="flex items-center justify-between gap-4">
                 <div className="min-w-0">
-                  <div className="font-medium">{j.title}</div>
-                  <div className="mt-1 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-                    {j.department && <span className="inline-flex items-center gap-1"><Briefcase className="h-3.5 w-3.5" />{j.department}</span>}
-                    {j.location && <span className="inline-flex items-center gap-1"><MapPin className="h-3.5 w-3.5" />{j.location}</span>}
+                  <div className="font-semibold text-[15px]" style={{ fontFamily: fontStack(headingFont) }}>
+                    {j.title}
+                  </div>
+                  <div className="mt-1.5 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+                    {j.department && (
+                      <span className="inline-flex items-center gap-1">
+                        <Briefcase className="h-3.5 w-3.5" />{j.department}
+                      </span>
+                    )}
+                    {j.location && (
+                      <span className="inline-flex items-center gap-1">
+                        <MapPin className="h-3.5 w-3.5" />{j.location}
+                      </span>
+                    )}
                     <span className="capitalize">{j.employment_type.replaceAll("_", " ")}</span>
                     {j.salary_min && j.salary_max && (
                       <span className="inline-flex items-center gap-1 font-medium text-foreground">
@@ -154,15 +218,26 @@ function CareersListing() {
                     )}
                   </div>
                 </div>
-                <Button variant="outline" size="sm">View</Button>
+                <button
+                  className="shrink-0 rounded-lg px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90"
+                  style={{ background: primary }}
+                >
+                  Apply →
+                </button>
               </div>
             </Link>
           ))}
         </div>
-      </section>
+      </main>
 
-      <footer className="border-t mt-10">
-        <div className="mx-auto max-w-4xl px-6 py-6 text-xs text-muted-foreground">Powered by HireFlow</div>
+      {/* Footer */}
+      <footer className="border-t bg-white mt-6">
+        <div className="mx-auto max-w-4xl px-6 py-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs text-muted-foreground">
+          <span>{footerText || (org.website ? `${org.company_name}` : "")}</span>
+          {showPowered && (
+            <span className="opacity-60">Powered by HireFlow</span>
+          )}
+        </div>
       </footer>
     </div>
   );

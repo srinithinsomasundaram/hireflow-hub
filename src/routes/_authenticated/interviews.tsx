@@ -10,7 +10,7 @@ function escHtml(s: string): string {
 }
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Plus, Calendar, Video, Phone, Monitor, Users, Loader2, Clock, ExternalLink, CheckCircle2, XCircle, UserX, ChevronDown } from "lucide-react";
+import { Plus, Calendar, Video, Phone, Monitor, Users, Loader2, Clock, ExternalLink, CheckCircle2, XCircle, UserX, ChevronDown, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrentOrg } from "@/hooks/use-current-org";
@@ -185,6 +185,19 @@ const STATUS_STYLE: Record<string, string> = {
   no_show:    "bg-orange-100 text-orange-600 border-orange-200",
 };
 
+const AVATAR_COLORS = [
+  "bg-blue-100 text-blue-700", "bg-violet-100 text-violet-700",
+  "bg-emerald-100 text-emerald-700", "bg-amber-100 text-amber-700",
+  "bg-pink-100 text-pink-700", "bg-teal-100 text-teal-700",
+];
+function avatarColor(s: string) {
+  return AVATAR_COLORS[(s.charCodeAt(0) + s.charCodeAt(s.length - 1)) % AVATAR_COLORS.length];
+}
+function isTodayDate(iso: string) {
+  const d = new Date(iso), t = new Date();
+  return d.getFullYear() === t.getFullYear() && d.getMonth() === t.getMonth() && d.getDate() === t.getDate();
+}
+
 const TYPE_ICON: Record<string, React.ElementType> = {
   video:     Video,
   phone:     Phone,
@@ -202,6 +215,23 @@ function formatDateTime(iso: string) {
 
 function initials(name: string) {
   return name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2);
+}
+
+const INTERVIEW_COLS = "2.5rem 1fr 7rem 10rem 5rem 7rem auto";
+
+function InterviewColHeaders() {
+  return (
+    <div className="hidden sm:grid px-5 py-2.5 border-b bg-muted/30"
+         style={{ gridTemplateColumns: INTERVIEW_COLS }}>
+      <span />
+      <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Candidate / Role</p>
+      <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Type</p>
+      <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Scheduled</p>
+      <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Duration</p>
+      <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Status</p>
+      <span />
+    </div>
+  );
 }
 
 function Interviews() {
@@ -227,12 +257,17 @@ function Interviews() {
     enabled: !!org?.id && open,
     queryKey: ["apps-for-interview", org?.id],
     queryFn: async () => {
-      const { data } = await supabase.from("applications").select("id, candidates(full_name), jobs(title)").eq("organization_id", org!.id).limit(100);
+      const { data } = await supabase
+        .from("applications").select("id, candidates(full_name), jobs(title)")
+        .eq("organization_id", org!.id).limit(100);
       return data ?? [];
     },
   });
 
-  const [form, setForm] = useState({ application_id: "", type: "video" as const, scheduled_at: "", meeting_url: "", duration_minutes: 60 });
+  const [form, setForm] = useState({
+    application_id: "", type: "video" as const,
+    scheduled_at: "", meeting_url: "", duration_minutes: 60,
+  });
 
   const create = useMutation({
     mutationFn: async () => {
@@ -250,7 +285,7 @@ function Interviews() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["interviews"] });
-      toast.success("Interview scheduled — confirmation email sent to candidate");
+      toast.success("Interview scheduled — confirmation email sent");
       setOpen(false);
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
@@ -266,95 +301,157 @@ function Interviews() {
     onError: e => toast.error(e instanceof Error ? e.message : "Failed"),
   });
 
-  const upcoming = (interviews ?? []).filter(i => i.status === "scheduled");
-  const past     = (interviews ?? []).filter(i => i.status !== "scheduled");
+  const upcoming  = (interviews ?? []).filter(i => i.status === "scheduled");
+  const completed = (interviews ?? []).filter(i => i.status === "completed");
+  const noShows   = (interviews ?? []).filter(i => i.status === "no_show");
+  const past      = (interviews ?? []).filter(i => i.status !== "scheduled");
 
   return (
-    <div className="space-y-5 max-w-4xl">
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Interviews</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            {interviews ? `${upcoming.length} upcoming · ${past.length} past` : "Schedule and track all candidate interviews."}
-          </p>
-        </div>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button className="gap-1.5 shadow-sm"><Plus className="h-4 w-4" /> Schedule</Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader><DialogTitle>Schedule interview</DialogTitle></DialogHeader>
-            <div className="space-y-3 py-1">
-              <div>
-                <Label>Candidate</Label>
-                <Select value={form.application_id} onValueChange={v => setForm({ ...form, application_id: v })}>
-                  <SelectTrigger className="mt-1.5"><SelectValue placeholder="Pick a candidate" /></SelectTrigger>
-                  <SelectContent>
-                    {(apps ?? []).map(a => {
-                      const c = (a as unknown as { candidates: { full_name: string } | null }).candidates;
-                      const j = (a as unknown as { jobs: { title: string } | null }).jobs;
-                      return <SelectItem key={a.id} value={a.id}>{c?.full_name} — {j?.title}</SelectItem>;
-                    })}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
+    <div className="space-y-5 max-w-5xl">
+
+      {/* Breadcrumb + header */}
+      <div>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1.5">
+              <span>Workspace</span>
+              <ChevronRight className="h-3 w-3" />
+              <span>Interviews</span>
+            </div>
+            <h1 className="text-xl font-semibold tracking-tight">Interviews</h1>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              {interviews
+                ? `${upcoming.length} upcoming · ${past.length} past`
+                : "Schedule and track all candidate interviews."}
+            </p>
+          </div>
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+              <Button size="sm" className="gap-1.5 h-8 text-xs px-3 shadow-sm shrink-0">
+                <Plus className="h-3.5 w-3.5" /> Schedule
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader><DialogTitle>Schedule interview</DialogTitle></DialogHeader>
+              <div className="space-y-3 py-1">
                 <div>
-                  <Label>Type</Label>
-                  <Select value={form.type} onValueChange={v => setForm({ ...form, type: v as typeof form.type })}>
-                    <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
+                  <Label>Candidate</Label>
+                  <Select value={form.application_id} onValueChange={v => setForm({ ...form, application_id: v })}>
+                    <SelectTrigger className="mt-1.5"><SelectValue placeholder="Pick a candidate" /></SelectTrigger>
                     <SelectContent>
-                      {["phone","video","onsite","technical","hr","manager"].map(t => <SelectItem key={t} value={t} className="capitalize">{t}</SelectItem>)}
+                      {(apps ?? []).map(a => {
+                        const c = (a as unknown as { candidates: { full_name: string } | null }).candidates;
+                        const j = (a as unknown as { jobs: { title: string } | null }).jobs;
+                        return <SelectItem key={a.id} value={a.id}>{c?.full_name} — {j?.title}</SelectItem>;
+                      })}
                     </SelectContent>
                   </Select>
                 </div>
-                <div>
-                  <Label>Duration (min)</Label>
-                  <Input type="number" value={form.duration_minutes} className="mt-1.5" onChange={e => setForm({ ...form, duration_minutes: Number(e.target.value) })} />
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label>Type</Label>
+                    <Select value={form.type} onValueChange={v => setForm({ ...form, type: v as typeof form.type })}>
+                      <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {["phone","video","onsite","technical","hr","manager"].map(t => (
+                          <SelectItem key={t} value={t} className="capitalize">{t}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Duration (min)</Label>
+                    <Input type="number" value={form.duration_minutes} className="mt-1.5"
+                      onChange={e => setForm({ ...form, duration_minutes: Number(e.target.value) })} />
+                  </div>
                 </div>
+                <div>
+                  <Label>Date &amp; time</Label>
+                  <Input type="datetime-local" value={form.scheduled_at} className="mt-1.5"
+                    onChange={e => setForm({ ...form, scheduled_at: e.target.value })} />
+                </div>
+                <div>
+                  <Label>Meeting URL <span className="text-muted-foreground font-normal">(optional)</span></Label>
+                  <Input value={form.meeting_url} className="mt-1.5"
+                    onChange={e => setForm({ ...form, meeting_url: e.target.value })}
+                    placeholder="https://meet.google.com/…" />
+                </div>
+                <Button
+                  onClick={() => create.mutate()}
+                  disabled={!form.application_id || !form.scheduled_at || create.isPending}
+                  className="w-full gap-1.5"
+                >
+                  {create.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+                  Schedule interview
+                </Button>
               </div>
-              <div>
-                <Label>Date & time</Label>
-                <Input type="datetime-local" value={form.scheduled_at} className="mt-1.5" onChange={e => setForm({ ...form, scheduled_at: e.target.value })} />
-              </div>
-              <div>
-                <Label>Meeting URL</Label>
-                <Input value={form.meeting_url} className="mt-1.5" onChange={e => setForm({ ...form, meeting_url: e.target.value })} placeholder="https://meet.google.com/…" />
-              </div>
-              <Button onClick={() => create.mutate()} disabled={!form.application_id || !form.scheduled_at || create.isPending} className="w-full gap-1.5">
-                {create.isPending && <Loader2 className="h-4 w-4 animate-spin" />} Schedule interview
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+            </DialogContent>
+          </Dialog>
+        </div>
+        <div className="mt-4 border-b" />
       </div>
 
+      {/* KPI stat cards */}
+      {interviews && interviews.length > 0 && (
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="rounded-lg border bg-card shadow-sm p-4 border-l-4 border-l-blue-500">
+            <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Upcoming</p>
+            <p className="mt-1.5 text-2xl font-bold tabular-nums">{upcoming.length}</p>
+          </div>
+          <div className="rounded-lg border bg-card shadow-sm p-4 border-l-4 border-l-emerald-500">
+            <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Completed</p>
+            <p className="mt-1.5 text-2xl font-bold tabular-nums">{completed.length}</p>
+          </div>
+          <div className="rounded-lg border bg-card shadow-sm p-4 border-l-4 border-l-orange-400">
+            <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">No-shows</p>
+            <p className="mt-1.5 text-2xl font-bold tabular-nums">{noShows.length}</p>
+          </div>
+        </div>
+      )}
+
+      {/* List */}
       {isLoading ? (
-        <div className="flex justify-center py-16"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+        <div className="flex justify-center py-16">
+          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        </div>
       ) : !interviews || interviews.length === 0 ? (
-        <Card className="shadow-sm"><CardContent className="py-16 text-center">
-          <Calendar className="h-9 w-9 text-muted-foreground/30 mx-auto mb-3" />
-          <p className="font-medium text-sm">No interviews scheduled</p>
-          <p className="text-xs text-muted-foreground mt-1">Schedule your first interview to track it here.</p>
-        </CardContent></Card>
+        <Card className="shadow-sm">
+          <CardContent className="py-16 text-center">
+            <Calendar className="h-9 w-9 text-muted-foreground/25 mx-auto mb-3" />
+            <p className="font-medium text-sm">No interviews scheduled</p>
+            <p className="text-xs text-muted-foreground mt-1">Schedule your first interview to track it here.</p>
+          </CardContent>
+        </Card>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-5">
           {upcoming.length > 0 && (
             <section>
-              <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2">Upcoming · {upcoming.length}</p>
+              <div className="flex items-center gap-2 mb-3">
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Upcoming</p>
+                <span className="rounded-full bg-primary/10 text-primary px-2 py-px text-[11px] font-semibold">{upcoming.length}</span>
+              </div>
               <Card className="shadow-sm overflow-hidden">
+                <InterviewColHeaders />
                 <div className="divide-y">
-                  {upcoming.map(i => <InterviewRow key={i.id} interview={i} onUpdate={updateStatus.mutate} updating={updateStatus.isPending} />)}
+                  {upcoming.map(i => (
+                    <InterviewRow key={i.id} interview={i} onUpdate={updateStatus.mutate} updating={updateStatus.isPending} />
+                  ))}
                 </div>
               </Card>
             </section>
           )}
           {past.length > 0 && (
             <section>
-              <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2">Completed / Past · {past.length}</p>
-              <Card className="shadow-sm overflow-hidden opacity-80">
+              <div className="flex items-center gap-2 mb-3">
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Past</p>
+                <span className="rounded-full bg-muted text-muted-foreground px-2 py-px text-[11px] font-semibold">{past.length}</span>
+              </div>
+              <Card className="shadow-sm overflow-hidden">
+                <InterviewColHeaders />
                 <div className="divide-y">
-                  {past.slice(0, 20).map(i => <InterviewRow key={i.id} interview={i} onUpdate={updateStatus.mutate} updating={updateStatus.isPending} />)}
+                  {past.slice(0, 30).map(i => (
+                    <InterviewRow key={i.id} interview={i} onUpdate={updateStatus.mutate} updating={updateStatus.isPending} />
+                  ))}
                 </div>
               </Card>
             </section>
@@ -374,16 +471,12 @@ function InterviewRow({ interview: i, onUpdate, updating }: { interview: any; on
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [feedback, setFeedback] = useState("");
   const [rating, setRating] = useState<string>("");
-
   const isScheduled = i.status === "scheduled";
+  const today = isTodayDate(i.scheduled_at);
+  const name = a?.candidates?.full_name ?? "Unknown";
 
   function submitFeedback() {
-    onUpdate({
-      interviewId: i.id,
-      status: "completed",
-      feedback: feedback || undefined,
-      rating: rating ? Number(rating) : undefined,
-    });
+    onUpdate({ interviewId: i.id, status: "completed", feedback: feedback || undefined, rating: rating ? Number(rating) : undefined });
     setFeedbackOpen(false);
     setFeedback("");
     setRating("");
@@ -391,34 +484,63 @@ function InterviewRow({ interview: i, onUpdate, updating }: { interview: any; on
 
   return (
     <>
-      <div className="flex items-center gap-4 px-5 py-3.5">
-        <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
-          {initials(a?.candidates?.full_name ?? "?")}
+      <div className="group grid items-center gap-4 px-5 py-3.5 hover:bg-muted/40 transition-colors"
+           style={{ gridTemplateColumns: INTERVIEW_COLS }}>
+
+        {/* Avatar */}
+        <div className={`grid h-8 w-8 shrink-0 place-items-center rounded-full text-xs font-semibold ${avatarColor(i.id)}`}>
+          {initials(name)}
         </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium truncate">{a?.candidates?.full_name ?? "Unknown"} — {a?.jobs?.title ?? ""}</p>
-          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-            <span className="inline-flex items-center gap-1 text-xs text-muted-foreground"><Clock className="h-3 w-3" />{date} at {time}</span>
-            <span className="text-xs text-muted-foreground">· {i.duration_minutes}m</span>
-            <span className="inline-flex items-center gap-1 text-xs text-muted-foreground capitalize"><TypeIcon className="h-3 w-3" />{i.type}</span>
-          </div>
+
+        {/* Name + job */}
+        <div className="min-w-0">
+          <p className="text-sm font-medium truncate">{name}</p>
+          <p className="text-xs text-muted-foreground truncate">{a?.jobs?.title ?? ""}</p>
           {i.feedback && (
-            <p className="text-xs text-muted-foreground mt-1 line-clamp-1 italic">"{i.feedback}"</p>
+            <p className="text-xs text-muted-foreground mt-0.5 italic truncate">"{i.feedback}"</p>
           )}
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          {i.meeting_url && (
-            <a href={i.meeting_url} target="_blank" rel="noreferrer">
-              <Button size="icon" variant="ghost" className="h-7 w-7"><ExternalLink className="h-3.5 w-3.5" /></Button>
-            </a>
-          )}
+
+        {/* Type */}
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground capitalize">
+          <TypeIcon className="h-3.5 w-3.5 shrink-0" />
+          {i.type}
+        </div>
+
+        {/* Scheduled date + time */}
+        <div>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <p className="text-xs font-medium">{date}</p>
+            {today && (
+              <span className="rounded-full bg-blue-100 text-blue-700 px-1.5 py-px text-[10px] font-semibold">Today</span>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground mt-0.5">{time}</p>
+        </div>
+
+        {/* Duration */}
+        <p className="text-xs text-muted-foreground">{i.duration_minutes}m</p>
+
+        {/* Status */}
+        <div>
           <span className={`rounded-full border px-2.5 py-0.5 text-xs font-medium ${STATUS_STYLE[i.status] ?? "bg-muted text-muted-foreground"}`}>
             {i.status.replace("_", " ")}
           </span>
+        </div>
+
+        {/* Actions */}
+        <div className="flex items-center gap-1 shrink-0">
+          {i.meeting_url && (
+            <a href={i.meeting_url} target="_blank" rel="noreferrer">
+              <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground hover:text-foreground">
+                <ExternalLink className="h-3.5 w-3.5" />
+              </Button>
+            </a>
+          )}
           {isScheduled && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button size="sm" variant="outline" className="h-7 gap-1 text-xs px-2" disabled={updating}>
+                <Button size="sm" variant="ghost" className="h-7 gap-1 text-xs px-2 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" disabled={updating}>
                   Update <ChevronDown className="h-3 w-3" />
                 </Button>
               </DropdownMenuTrigger>
@@ -426,18 +548,15 @@ function InterviewRow({ interview: i, onUpdate, updating }: { interview: any; on
                 <DropdownMenuItem className="gap-2 text-sm" onClick={() => setFeedbackOpen(true)}>
                   <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" /> Mark completed
                 </DropdownMenuItem>
-                <DropdownMenuItem
-                  className="gap-2 text-sm"
-                  onClick={() => onUpdate({ interviewId: i.id, status: "no_show" })}
-                >
+                <DropdownMenuItem className="gap-2 text-sm"
+                  onClick={() => onUpdate({ interviewId: i.id, status: "no_show" })}>
                   <UserX className="h-3.5 w-3.5 text-orange-500" /> No show
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   className="text-destructive focus:text-destructive focus:bg-destructive/10 gap-2 text-sm"
-                  onClick={() => onUpdate({ interviewId: i.id, status: "cancelled" })}
-                >
-                  <XCircle className="h-3.5 w-3.5" /> Cancel interview
+                  onClick={() => onUpdate({ interviewId: i.id, status: "cancelled" })}>
+                  <XCircle className="h-3.5 w-3.5" /> Cancel
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -445,20 +564,14 @@ function InterviewRow({ interview: i, onUpdate, updating }: { interview: any; on
         </div>
       </div>
 
-      {/* Feedback dialog */}
       <Dialog open={feedbackOpen} onOpenChange={setFeedbackOpen}>
         <DialogContent>
           <DialogHeader><DialogTitle>Mark as completed</DialogTitle></DialogHeader>
           <div className="space-y-3 py-1">
             <div>
               <Label>Feedback / notes <span className="text-muted-foreground font-normal">(optional)</span></Label>
-              <Textarea
-                rows={4}
-                value={feedback}
-                onChange={e => setFeedback(e.target.value)}
-                placeholder="How did the interview go?"
-                className="mt-1.5 resize-none text-sm"
-              />
+              <Textarea rows={4} value={feedback} onChange={e => setFeedback(e.target.value)}
+                placeholder="How did the interview go?" className="mt-1.5 resize-none text-sm" />
             </div>
             <div>
               <Label>Rating <span className="text-muted-foreground font-normal">(optional, 1–5)</span></Label>
@@ -466,9 +579,7 @@ function InterviewRow({ interview: i, onUpdate, updating }: { interview: any; on
                 <SelectTrigger className="mt-1.5 w-40"><SelectValue placeholder="Select…" /></SelectTrigger>
                 <SelectContent>
                   {[1,2,3,4,5].map(n => (
-                    <SelectItem key={n} value={String(n)}>
-                      {"★".repeat(n)}{"☆".repeat(5-n)} ({n})
-                    </SelectItem>
+                    <SelectItem key={n} value={String(n)}>{"★".repeat(n)}{"☆".repeat(5-n)} ({n})</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

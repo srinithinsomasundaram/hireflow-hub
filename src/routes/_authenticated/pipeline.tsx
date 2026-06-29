@@ -97,15 +97,17 @@ function Pipeline() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Pipeline</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">
-          Drag cards to advance candidates. Hover a card and click <Sparkles className="inline h-3 w-3 text-amber-500" /> to score with YESP AI.
-        </p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Pipeline</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Drag cards to move candidates between stages · hover a card to score with <Sparkles className="inline h-3 w-3 text-amber-500" /> YESP AI
+          </p>
+        </div>
       </div>
       {appsLoading && <KanbanSkeleton cols={5} />}
       <DndContext sensors={sensors} onDragEnd={onDragEnd}>
-        <div className={`flex gap-3 overflow-x-auto pb-4 ${appsLoading ? "hidden" : ""}`} style={{ minHeight: "calc(100vh - 220px)" }}>
+        <div className={`flex gap-3 overflow-x-auto pb-6 ${appsLoading ? "hidden" : ""}`} style={{ minHeight: "calc(100vh - 220px)" }}>
           {STAGES.map(s => {
             const items = (apps ?? []).filter(a => a.stage === s.id);
             return (
@@ -136,14 +138,14 @@ function Column({
   return (
     <div
       ref={setNodeRef}
-      className={`flex w-64 shrink-0 flex-col rounded-xl border bg-muted/40 transition-all ${isOver ? `ring-2 ${colors.ring}` : ""}`}
+      className={`flex w-[17rem] shrink-0 flex-col rounded-xl border bg-muted/30 transition-all ${isOver ? `ring-2 ${colors.ring}` : ""}`}
     >
-      <div className={`flex items-center justify-between rounded-t-xl border-b px-3 py-2.5 ${colors.header}`}>
+      <div className={`flex items-center justify-between rounded-t-xl border-b px-3.5 py-3 ${colors.header}`}>
         <div className="flex items-center gap-2">
           <div className={`h-2 w-2 rounded-full ${colors.dot}`} />
-          <span className="text-xs font-semibold">{label}</span>
+          <span className="text-xs font-semibold tracking-wide">{label}</span>
         </div>
-        <span className="rounded-full bg-background/70 px-2 py-0.5 text-xs font-medium tabular-nums">{items.length}</span>
+        <span className="rounded-full bg-background/80 px-2 py-0.5 text-xs font-semibold tabular-nums">{items.length}</span>
       </div>
       <div className="flex flex-col gap-2 p-2 flex-1">
         {items.map(a => (
@@ -168,10 +170,10 @@ function Draggable({ app, onScore, isScoring }: { app: AppRow; onScore: () => vo
       style={style}
       {...listeners}
       {...attributes}
-      className={`group cursor-grab rounded-lg border bg-background p-3 shadow-sm hover:shadow-md transition-shadow active:cursor-grabbing ${isDragging ? "opacity-50 scale-95" : ""}`}
+      className={`group cursor-grab rounded-lg border bg-background px-3 py-2.5 shadow-sm hover:shadow-md transition-all active:cursor-grabbing ${isDragging ? "opacity-50 scale-95" : ""}`}
     >
-      <div className="flex items-start gap-2">
-        <div className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-primary/10 text-[10px] font-semibold text-primary mt-0.5">
+      <div className="flex items-start gap-2.5">
+        <div className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-primary/10 text-[10px] font-bold text-primary mt-0.5">
           {initials(app.candidates?.full_name ?? "?")}
         </div>
         <div className="min-w-0 flex-1">
@@ -179,11 +181,11 @@ function Draggable({ app, onScore, isScoring }: { app: AppRow; onScore: () => vo
             to="/applications/$id"
             params={{ id: app.id }}
             onClick={e => e.stopPropagation()}
-            className="text-sm font-medium hover:underline leading-tight line-clamp-1"
+            className="text-[13px] font-medium hover:underline leading-snug line-clamp-1"
           >
             {app.candidates?.full_name ?? "Unknown"}
           </Link>
-          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{app.jobs?.title}</p>
+          <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-1">{app.jobs?.title}</p>
         </div>
       </div>
 

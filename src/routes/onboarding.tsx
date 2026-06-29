@@ -51,14 +51,8 @@ export const findAvailableSlug = createServerFn({ method: "GET" })
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-/** Returns the base domain for subdomain URLs, e.g. "hireflow.app" or "localhost:5173". */
 function getBaseDomain(): string {
-  if (typeof window === "undefined") return "hireflow.app";
-  const { hostname, port } = window.location;
-  // Strip any existing subdomain
-  const parts = hostname.split(".");
-  const base = parts.length >= 3 ? parts.slice(1).join(".") : hostname;
-  return port ? `${base}:${port}` : base;
+  return import.meta.env.VITE_APP_DOMAIN ?? "hireflow.yesp.space";
 }
 
 // ─── Route ────────────────────────────────────────────────────────────────────

@@ -440,6 +440,7 @@ export type Database = {
       }
       organization_settings: {
         Row: {
+          brand_config: Json | null
           brand_logo_url: string | null
           brand_primary_color: string | null
           careers_tagline: string | null
@@ -452,6 +453,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          brand_config?: Json | null
           brand_logo_url?: string | null
           brand_primary_color?: string | null
           careers_tagline?: string | null
@@ -464,6 +466,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          brand_config?: Json | null
           brand_logo_url?: string | null
           brand_primary_color?: string | null
           careers_tagline?: string | null
