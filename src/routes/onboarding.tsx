@@ -19,7 +19,7 @@ import { slugify } from "@/lib/slug";
 // ─── Server fn: find the first available slug (runs as anon — can read all orgs) ──
 
 export const findAvailableSlug = createServerFn({ method: "GET" })
-  .inputValidator((d: unknown) => z.object({
+  .validator((d: unknown) => z.object({
     slug: z.string().min(1).max(60).regex(/^[a-z0-9-]+$/, "Slug must be lowercase alphanumeric with hyphens"),
   }).parse(d))
   .handler(async ({ data }) => {

@@ -41,7 +41,7 @@ const ScheduleInput = z.object({
 
 export const scheduleInterviewFn = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: unknown) => ScheduleInput.parse(d))
+  .validator((d: unknown) => ScheduleInput.parse(d))
   .handler(async ({ data, context }) => {
     // Verify caller belongs to this org
     const { data: role } = await context.supabase
@@ -144,7 +144,7 @@ const UpdateStatusInput = z.object({
 
 export const updateInterviewStatusFn = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: unknown) => UpdateStatusInput.parse(d))
+  .validator((d: unknown) => UpdateStatusInput.parse(d))
   .handler(async ({ data, context }) => {
     // Verify the caller can access this interview — RLS enforces org membership
     const { data: intCheck } = await context.supabase

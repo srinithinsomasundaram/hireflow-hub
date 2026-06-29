@@ -12,7 +12,7 @@ const StageInput = z.object({
 // Called from the pipeline and application detail page to change stage and fire automations.
 export const changeStageFn = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: unknown) => StageInput.parse(d))
+  .validator((d: unknown) => StageInput.parse(d))
   .handler(async ({ data, context }) => {
     // Verify the caller can access this application — RLS enforces org membership
     const { data: appCheck } = await context.supabase

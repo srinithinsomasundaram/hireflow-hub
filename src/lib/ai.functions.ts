@@ -40,7 +40,7 @@ const OfferInput = z.object({
 
 export const generateOfferLetter = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: unknown) => OfferInput.parse(d))
+  .validator((d: unknown) => OfferInput.parse(d))
   .handler(async ({ data, context }) => {
     const { supabase } = context;
 
@@ -126,7 +126,7 @@ const ScoreInput = z.object({ applicationId: z.string().uuid() });
 
 export const scoreApplication = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: unknown) => ScoreInput.parse(d))
+  .validator((d: unknown) => ScoreInput.parse(d))
   .handler(async ({ data, context }) => {
     const { supabase } = context;
     const { data: app, error } = await supabase
@@ -180,7 +180,7 @@ const ParseInput = z.object({ resumeText: z.string().min(20).max(50000) });
 
 export const parseResumeText = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: unknown) => ParseInput.parse(d))
+  .validator((d: unknown) => ParseInput.parse(d))
   .handler(async ({ data }) => {
     const key = getKey();
     const prompt = `Parse this resume into strict JSON with this shape:

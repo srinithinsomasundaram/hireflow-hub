@@ -44,7 +44,7 @@ const SendOfferInput = z.object({
 
 export const sendOfferLetterFn = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: unknown) => SendOfferInput.parse(d))
+  .validator((d: unknown) => SendOfferInput.parse(d))
   .handler(async ({ data, context }) => {
     // Verify caller belongs to this org
     const { data: role } = await context.supabase

@@ -28,7 +28,7 @@ const SaveSmtpInput = z.object({
 // If password is empty, the existing encrypted password in the DB is preserved.
 export const saveSmtpConfigFn = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: unknown) => SaveSmtpInput.parse(d))
+  .validator((d: unknown) => SaveSmtpInput.parse(d))
   .handler(async ({ data, context }) => {
     const { encryptValue } = await import("./encrypt");
     const { supabase } = context;

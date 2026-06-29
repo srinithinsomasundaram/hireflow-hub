@@ -62,7 +62,7 @@ function fontStack(f: string) { return `'${f}', system-ui, sans-serif`; }
 const Input = z.object({ slug: z.string().min(1).max(64) });
 
 export const getOrgWithJobs = createServerFn({ method: "GET" })
-  .inputValidator((d: unknown) => Input.parse(d))
+  .validator((d: unknown) => Input.parse(d))
   .handler(async ({ data }) => {
     const supabase = createClient<Database>(
       process.env.SUPABASE_URL!,

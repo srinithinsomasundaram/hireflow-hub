@@ -21,7 +21,7 @@ import { Briefcase, MapPin, ArrowLeft, Upload } from "lucide-react";
 const Input1 = z.object({ jobId: z.string().uuid() });
 
 export const getPublicJob = createServerFn({ method: "GET" })
-  .inputValidator((d: unknown) => Input1.parse(d))
+  .validator((d: unknown) => Input1.parse(d))
   .handler(async ({ data }) => {
     const sb = createClient<Database>(
       process.env.SUPABASE_URL!,
@@ -73,7 +73,7 @@ function isSafeOutboundUrl(raw: string): boolean {
 }
 
 export const submitApplicationFn = createServerFn({ method: "POST" })
-  .inputValidator((d: unknown) => AppInput.parse(d))
+  .validator((d: unknown) => AppInput.parse(d))
   .handler(async ({ data }) => {
     // Rate limit: 5 submissions per IP per job per 10 minutes
     const req = getRequest();
