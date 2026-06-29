@@ -25,13 +25,14 @@ export function setActiveOrgId(id: string | null) {
 export function useCurrentOrg() {
   return useQuery<CurrentOrg | null>({
     queryKey: ["current-org"],
+    // getSession() reads from localStorage — no network round-trip, ~0ms
     queryFn: async () => {
-      const { data: u } = await supabase.auth.getUser();
-      if (!u.user) return null;
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return null;
       const { data: roles } = await supabase
         .from("user_roles")
         .select("organization_id, role, organizations(id, company_name, slug, logo_url)")
-        .eq("user_id", u.user.id)
+        .eq("user_id", session.user.id)
         .eq("status", "active");
       if (!roles || roles.length === 0) return null;
 
@@ -49,6 +50,7 @@ export function useCurrentOrg() {
       if (!row.organizations) return null;
       return { ...row.organizations, role: row.role };
     },
+    staleTime: 1000 * 60 * 30, // org info rarely changes — cache 30 min
   });
 }
 

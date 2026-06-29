@@ -13,12 +13,12 @@ export function useAllOrgs() {
   return useQuery<OrgEntry[]>({
     queryKey: ["all-orgs"],
     queryFn: async () => {
-      const { data: u } = await supabase.auth.getUser();
-      if (!u.user) return [];
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return [];
       const { data: roles } = await supabase
         .from("user_roles")
         .select("organization_id, role, organizations(id, company_name, slug, logo_url)")
-        .eq("user_id", u.user.id)
+        .eq("user_id", session.user.id)
         .eq("status", "active");
       if (!roles || roles.length === 0) return [];
       return roles
@@ -32,5 +32,6 @@ export function useAllOrgs() {
         })
         .filter((x): x is OrgEntry => x !== null);
     },
+    staleTime: 1000 * 60 * 30, // org list rarely changes
   });
 }

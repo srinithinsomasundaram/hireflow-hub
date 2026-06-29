@@ -85,14 +85,23 @@ function createSubdomainAwareHistory(): RouterHistory {
 }
 
 export const getRouter = () => {
-  const queryClient = new QueryClient();
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        staleTime: 1000 * 60 * 2,   // data is fresh for 2 min — no refetch on tab switch
+        gcTime: 1000 * 60 * 10,     // keep unused cache for 10 min
+        refetchOnWindowFocus: false, // don't refetch every time user switches tabs
+        retry: 1,                    // only retry once on failure (default 3 is slow)
+      },
+    },
+  });
 
   const router = createRouter({
     routeTree,
     context: { queryClient },
     history: typeof window !== "undefined" ? createSubdomainAwareHistory() : undefined,
     scrollRestoration: true,
-    defaultPreloadStaleTime: 0,
+    defaultPreloadStaleTime: 30_000, // preloaded data is good for 30s
   });
 
   return router;
