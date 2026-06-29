@@ -35,7 +35,13 @@ export const getPublicJob = createServerFn({ method: "GET" })
       .select("id, title, department, location, employment_type, salary_min, salary_max, salary_currency, description, requirements, organization_id, organizations(company_name, slug, logo_url)")
       .eq("id", data.jobId).eq("status", "published").maybeSingle();
     if (!job) return null;
-    const { data: settings } = await sb
+    // Use service role key to bypass RLS — organization_settings is not readable by anon
+    const sbAdmin = createClient<Database>(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      { auth: { storage: undefined, persistSession: false, autoRefreshToken: false } },
+    );
+    const { data: settings } = await sbAdmin
       .from("organization_settings")
       .select("form_config")
       .eq("organization_id", job.organization_id)
