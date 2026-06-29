@@ -114,8 +114,18 @@ function AuthPage() {
                   <Input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@company.com" />
                 </div>
                 <div>
-                  <Label htmlFor="pwd">Password</Label>
-                  <Input id="pwd" type="password" required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="At least 8 characters" />
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="pwd">Password</Label>
+                    {tab === "signin" && (
+                      <Link
+                        to="/forgot-password"
+                        className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        Forgot password?
+                      </Link>
+                    )}
+                  </div>
+                  <Input id="pwd" type="password" required minLength={8} className="mt-1.5" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="At least 8 characters" />
                 </div>
                 <Button type="submit" className="w-full" disabled={loading}>
                   {loading ? "…" : tab === "signup" ? "Create account" : "Sign in"}
