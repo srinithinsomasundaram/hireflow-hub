@@ -10,7 +10,7 @@
  *   35.244.2.197:8080          → null  (raw IP)
  */
 
-const RESERVED = new Set(["www", "app", "api", "mail", "smtp", "ftp", "hireflow"]);
+const RESERVED = new Set(["www", "app", "api", "mail", "smtp", "ftp"]);
 
 // e.g. "hireflow.yesp.space" — set via VITE_APP_DOMAIN env var
 const APP_DOMAIN =
