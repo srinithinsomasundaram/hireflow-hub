@@ -1,6 +1,7 @@
 import { createFileRoute, Outlet, redirect, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { MailWarning, ArrowRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrentOrg } from "@/hooks/use-current-org";
@@ -49,6 +50,7 @@ type OnlineMember = {
 function AuthenticatedLayout() {
   const navigate = useNavigate();
   const [checkedOrg, setCheckedOrg] = useState(false);
+  useKeyboardShortcuts();
   const { data: org } = useCurrentOrg();
 
   useEffect(() => {

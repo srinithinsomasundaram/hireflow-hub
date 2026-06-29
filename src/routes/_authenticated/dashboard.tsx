@@ -1,13 +1,16 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import {
   Briefcase, Users, GitBranch, Calendar, ArrowUpRight, Plus,
-  TrendingUp, Video, Phone, Monitor, ChevronRight,
+  TrendingUp, Video, Phone, Monitor, ChevronRight, Zap,
+  AlertCircle,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrentOrg } from "@/hooks/use-current-org";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { ApplicationDrawer } from "@/components/application-drawer";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({ meta: [{ title: "Dashboard · HireFlow" }] }),
@@ -69,6 +72,7 @@ function greeting() {
 
 function Dashboard() {
   const { data: org } = useCurrentOrg();
+  const [drawerAppId, setDrawerAppId] = useState<string | null>(null);
 
   const { data: stats } = useQuery({
     enabled: !!org?.id,
@@ -137,6 +141,46 @@ function Dashboard() {
     },
   });
 
+  // Today-specific data
+  const { data: todayApps } = useQuery({
+    enabled: !!org?.id,
+    queryKey: ["today-apps", org?.id],
+    queryFn: async () => {
+      const startOfDay = new Date(); startOfDay.setHours(0, 0, 0, 0);
+      const { data } = await supabase
+        .from("applications")
+        .select("id, stage, applied_at, candidates(full_name), jobs(title)")
+        .eq("organization_id", org!.id)
+        .gte("applied_at", startOfDay.toISOString())
+        .order("applied_at", { ascending: false });
+      return data ?? [];
+    },
+  });
+
+  const { data: todayInterviews } = useQuery({
+    enabled: !!org?.id,
+    queryKey: ["today-interviews", org?.id],
+    queryFn: async () => {
+      const startOfDay = new Date(); startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay   = new Date(); endOfDay.setHours(23, 59, 59, 999);
+      const { data } = await supabase
+        .from("interviews")
+        .select("id, scheduled_at, type, applications(candidates(full_name), jobs(title))")
+        .eq("organization_id", org!.id)
+        .eq("status", "scheduled")
+        .gte("scheduled_at", startOfDay.toISOString())
+        .lte("scheduled_at", endOfDay.toISOString())
+        .order("scheduled_at", { ascending: true });
+      return data ?? [];
+    },
+  });
+
+  // Bottleneck stages — more than 15 candidates stuck
+  const bottlenecks = Object.entries(stageCounts ?? {})
+    .filter(([, count]) => count >= 15)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 2);
+
   const today = new Date().toLocaleDateString("en-US", {
     weekday: "long", month: "long", day: "numeric", year: "numeric",
   });
@@ -164,6 +208,42 @@ function Dashboard() {
         </div>
         <div className="mt-4 border-b" />
       </div>
+
+      {/* ── Today's agenda ── */}
+      {((todayInterviews?.length ?? 0) > 0 || (todayApps?.length ?? 0) > 0 || bottlenecks.length > 0) && (
+        <div className="rounded-xl border bg-primary/5 border-primary/10 px-5 py-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Zap className="h-4 w-4 text-primary" />
+            <p className="text-sm font-semibold">Today's agenda</p>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            {(todayInterviews?.length ?? 0) > 0 && (
+              <Link to="/interviews" className="flex items-center gap-2 rounded-lg border bg-background px-3 py-2 text-xs hover:shadow-sm transition-all">
+                <Calendar className="h-3.5 w-3.5 text-emerald-600" />
+                <span className="font-semibold text-foreground">{todayInterviews!.length}</span>
+                <span className="text-muted-foreground">interview{todayInterviews!.length > 1 ? "s" : ""} today</span>
+              </Link>
+            )}
+            {(todayApps?.length ?? 0) > 0 && (
+              <button
+                onClick={() => setDrawerAppId(todayApps![0].id)}
+                className="flex items-center gap-2 rounded-lg border bg-background px-3 py-2 text-xs hover:shadow-sm transition-all"
+              >
+                <Users className="h-3.5 w-3.5 text-blue-600" />
+                <span className="font-semibold text-foreground">{todayApps!.length}</span>
+                <span className="text-muted-foreground">new application{todayApps!.length > 1 ? "s" : ""} today</span>
+              </button>
+            )}
+            {bottlenecks.map(([stage, count]) => (
+              <Link key={stage} to="/pipeline" className="flex items-center gap-2 rounded-lg border bg-amber-50 border-amber-200 px-3 py-2 text-xs hover:shadow-sm transition-all">
+                <AlertCircle className="h-3.5 w-3.5 text-amber-600" />
+                <span className="font-semibold text-amber-800">{count} stuck</span>
+                <span className="text-amber-700">in {stage.replaceAll("_", " ")}</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* ── KPI cards ── */}
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -222,9 +302,10 @@ function Dashboard() {
                 const cand = (r as unknown as { candidates: { full_name: string; email: string } | null }).candidates;
                 const job  = (r as unknown as { jobs: { title: string } | null }).jobs;
                 return (
-                  <Link
-                    key={r.id} to="/applications/$id" params={{ id: r.id }}
-                    className="grid grid-cols-[1fr_auto_auto] gap-3 items-center py-3 px-5 hover:bg-muted/40 transition-colors"
+                  <button
+                    key={r.id}
+                    onClick={() => setDrawerAppId(r.id)}
+                    className="w-full grid grid-cols-[1fr_auto_auto] gap-3 items-center py-3 px-5 hover:bg-muted/40 transition-colors text-left"
                   >
                     <div className="flex items-center gap-3 min-w-0">
                       <div className={`grid h-7 w-7 shrink-0 place-items-center rounded-full text-[10px] font-semibold ${avatarColor(r.id)}`}>
@@ -241,7 +322,7 @@ function Dashboard() {
                     <span className="w-16 text-right text-[11px] text-muted-foreground tabular-nums">
                       {timeAgo(r.applied_at)}
                     </span>
-                  </Link>
+                  </button>
                 );
               })}
             </div>
@@ -315,6 +396,8 @@ function Dashboard() {
 
         </div>
       </div>
+
+      <ApplicationDrawer applicationId={drawerAppId} onClose={() => setDrawerAppId(null)} />
     </div>
   );
 }

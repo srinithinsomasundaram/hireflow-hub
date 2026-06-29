@@ -11,6 +11,7 @@ function escHtml(s: string): string {
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Plus, Calendar, Video, Phone, Monitor, Users, Loader2, Clock, ExternalLink, CheckCircle2, XCircle, UserX, ChevronDown, ChevronRight } from "lucide-react";
+import { ApplicationDrawer } from "@/components/application-drawer";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrentOrg } from "@/hooks/use-current-org";
@@ -238,6 +239,7 @@ function Interviews() {
   const { data: org } = useCurrentOrg();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [drawerAppId, setDrawerAppId] = useState<string | null>(null);
 
   const { data: interviews, isLoading } = useQuery({
     enabled: !!org?.id,
@@ -245,7 +247,7 @@ function Interviews() {
     queryFn: async () => {
       const { data } = await supabase
         .from("interviews")
-        .select("*, applications(candidates(full_name), jobs(title))")
+        .select("*, application_id, applications(candidates(full_name), jobs(title))")
         .eq("organization_id", org!.id)
         .order("scheduled_at", { ascending: true })
         .limit(200);
@@ -434,7 +436,7 @@ function Interviews() {
                 <InterviewColHeaders />
                 <div className="divide-y">
                   {upcoming.map(i => (
-                    <InterviewRow key={i.id} interview={i} onUpdate={updateStatus.mutate} updating={updateStatus.isPending} />
+                    <InterviewRow key={i.id} interview={i} onUpdate={updateStatus.mutate} updating={updateStatus.isPending} onOpenDrawer={setDrawerAppId} />
                   ))}
                 </div>
               </Card>
@@ -450,7 +452,7 @@ function Interviews() {
                 <InterviewColHeaders />
                 <div className="divide-y">
                   {past.slice(0, 30).map(i => (
-                    <InterviewRow key={i.id} interview={i} onUpdate={updateStatus.mutate} updating={updateStatus.isPending} />
+                    <InterviewRow key={i.id} interview={i} onUpdate={updateStatus.mutate} updating={updateStatus.isPending} onOpenDrawer={setDrawerAppId} />
                   ))}
                 </div>
               </Card>
@@ -458,13 +460,15 @@ function Interviews() {
           )}
         </div>
       )}
+
+      <ApplicationDrawer applicationId={drawerAppId} onClose={() => setDrawerAppId(null)} />
     </div>
   );
 }
 
 type UpdateStatusFn = (vars: { interviewId: string; status: "scheduled" | "completed" | "cancelled" | "no_show"; feedback?: string; rating?: number }) => void;
 
-function InterviewRow({ interview: i, onUpdate, updating }: { interview: any; onUpdate: UpdateStatusFn; updating: boolean }) {
+function InterviewRow({ interview: i, onUpdate, updating, onOpenDrawer }: { interview: any; onUpdate: UpdateStatusFn; updating: boolean; onOpenDrawer: (id: string) => void }) {
   const a = i.applications;
   const { date, time } = formatDateTime(i.scheduled_at);
   const TypeIcon = TYPE_ICON[i.type] ?? Calendar;
@@ -488,13 +492,20 @@ function InterviewRow({ interview: i, onUpdate, updating }: { interview: any; on
            style={{ gridTemplateColumns: INTERVIEW_COLS }}>
 
         {/* Avatar */}
-        <div className={`grid h-8 w-8 shrink-0 place-items-center rounded-full text-xs font-semibold ${avatarColor(i.id)}`}>
+        <button
+          onClick={() => i.application_id && onOpenDrawer(i.application_id)}
+          className={`grid h-8 w-8 shrink-0 place-items-center rounded-full text-xs font-semibold hover:ring-2 hover:ring-primary/30 transition-all ${avatarColor(i.id)}`}
+          title="View application"
+        >
           {initials(name)}
-        </div>
+        </button>
 
         {/* Name + job */}
         <div className="min-w-0">
-          <p className="text-sm font-medium truncate">{name}</p>
+          <button
+            onClick={() => i.application_id && onOpenDrawer(i.application_id)}
+            className="text-sm font-medium truncate hover:text-primary transition-colors text-left w-full"
+          >{name}</button>
           <p className="text-xs text-muted-foreground truncate">{a?.jobs?.title ?? ""}</p>
           {i.feedback && (
             <p className="text-xs text-muted-foreground mt-0.5 italic truncate">"{i.feedback}"</p>

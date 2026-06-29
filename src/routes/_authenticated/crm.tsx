@@ -1,12 +1,15 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrentOrg } from "@/hooks/use-current-org";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Star, Search, Loader2, Building2, ChevronRight, Tag, Users } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Star, Search, Loader2, Building2, ChevronRight, Tag, Users, CheckSquare, Square, X, Download, Trash2 } from "lucide-react";
+import { ApplicationDrawer } from "@/components/application-drawer";
 
 export const Route = createFileRoute("/_authenticated/crm")({
   head: () => ({ meta: [{ title: "Talent CRM · HireFlow" }] }),
@@ -31,21 +34,52 @@ const CRM_COLS = "2.5rem 1fr 11rem 9rem 7rem";
 
 function CRM() {
   const { data: org } = useCurrentOrg();
+  const qc = useQueryClient();
   const [q, setQ] = useState("");
   const [tab, setTab] = useState<CrmFilter>("all");
+  const [bulkMode, setBulkMode] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [drawerAppId, setDrawerAppId] = useState<string | null>(null);
 
   const { data, isLoading } = useQuery({
     enabled: !!org?.id,
     queryKey: ["crm", org?.id],
     queryFn: async () => {
       const { data } = await supabase
-        .from("candidates").select("*")
+        .from("candidates").select("*, applications(id)")
         .eq("organization_id", org!.id)
         .order("created_at", { ascending: false })
         .limit(200);
       return data ?? [];
     },
   });
+
+  function toggleSelect(id: string) {
+    setSelected(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  }
+  function selectAll() {
+    if (selected.size === filtered.length) setSelected(new Set());
+    else setSelected(new Set(filtered.map(c => c.id)));
+  }
+  async function bulkDelete() {
+    const ids = Array.from(selected);
+    const { error } = await supabase.from("candidates").delete().in("id", ids).eq("organization_id", org!.id);
+    if (error) { toast.error("Delete failed"); return; }
+    toast.success(`Deleted ${ids.length} candidate${ids.length > 1 ? "s" : ""}`);
+    qc.invalidateQueries({ queryKey: ["crm"] });
+    setSelected(new Set()); setBulkMode(false);
+  }
+  function exportCSV() {
+    const rows = filtered.filter(c => selected.size === 0 || selected.has(c.id));
+    const lines = [
+      ["Name","Email","Company","Tags","Source"].join(","),
+      ...rows.map(c => [c.full_name, c.email, c.current_company ?? "", (c.tags as string[] ?? []).join(";"), c.source ?? ""]
+        .map(v => `"${String(v).replace(/"/g,'""')}"`).join(",")),
+    ];
+    const blob = new Blob([lines.join("\n")], { type: "text/csv" });
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "crm.csv"; a.click();
+    toast.success(`Exported ${rows.length} candidates`);
+  }
 
   const all = data ?? [];
   const tagged   = all.filter(c => (c.tags as string[] | null)?.length);
@@ -89,14 +123,27 @@ function CRM() {
               {data ? `${all.length} candidates in your talent pool` : "Your searchable talent pool."}
             </p>
           </div>
-          <div className="relative hidden sm:block shrink-0">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
-            <Input
-              value={q}
-              onChange={e => setQ(e.target.value)}
-              placeholder="Search name, email, company…"
-              className="h-8 pl-8 pr-3 text-xs w-52 focus:w-64 transition-all"
-            />
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="relative hidden sm:block">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+              <Input
+                value={q}
+                onChange={e => setQ(e.target.value)}
+                placeholder="Search name, email, company…"
+                className="h-8 pl-8 pr-3 text-xs w-52 focus:w-64 transition-all"
+              />
+            </div>
+            <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={exportCSV}>
+              <Download className="h-3.5 w-3.5" /> Export
+            </Button>
+            <Button
+              variant={bulkMode ? "default" : "outline"} size="sm"
+              className="h-8 text-xs gap-1.5"
+              onClick={() => { setBulkMode(v => !v); setSelected(new Set()); }}
+            >
+              {bulkMode ? <CheckSquare className="h-3.5 w-3.5" /> : <Square className="h-3.5 w-3.5" />}
+              {bulkMode ? "Cancel" : "Select"}
+            </Button>
           </div>
         </div>
         <div className="mt-4 border-b" />
@@ -117,6 +164,32 @@ function CRM() {
             <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Companies</p>
             <p className="mt-1.5 text-2xl font-bold tabular-nums">{companies}</p>
           </div>
+        </div>
+      )}
+
+      {/* Bulk action bar */}
+      {bulkMode && (
+        <div className="flex items-center gap-2 rounded-lg border bg-primary/5 border-primary/20 px-4 py-2.5 flex-wrap">
+          <button onClick={selectAll} className="flex items-center gap-1.5 text-xs font-medium text-foreground hover:text-primary transition-colors">
+            {selected.size === filtered.length && filtered.length > 0
+              ? <CheckSquare className="h-4 w-4 text-primary" />
+              : <Square className="h-4 w-4" />}
+            {selected.size === filtered.length && filtered.length > 0 ? "Deselect all" : "Select all"}
+          </button>
+          <span className="text-muted-foreground text-xs ml-1">{selected.size > 0 ? `${selected.size} selected` : "none selected"}</span>
+          {selected.size > 0 && (
+            <>
+              <Button size="sm" variant="outline" className="h-7 text-xs gap-1 text-red-600 border-red-200 hover:bg-red-50 ml-2" onClick={bulkDelete}>
+                <Trash2 className="h-3.5 w-3.5" /> Delete {selected.size}
+              </Button>
+              <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={exportCSV}>
+                <Download className="h-3.5 w-3.5" /> Export selected
+              </Button>
+            </>
+          )}
+          <button onClick={() => { setBulkMode(false); setSelected(new Set()); }} className="ml-auto text-muted-foreground hover:text-foreground">
+            <X className="h-3.5 w-3.5" />
+          </button>
         </div>
       )}
 
@@ -164,7 +237,8 @@ function CRM() {
         <Card className="shadow-sm overflow-hidden">
           {/* Column headers */}
           <div className="hidden sm:grid px-5 py-2.5 border-b bg-muted/30"
-               style={{ gridTemplateColumns: CRM_COLS }}>
+               style={{ gridTemplateColumns: bulkMode ? `1.5rem ${CRM_COLS}` : CRM_COLS }}>
+            {bulkMode && <span />}
             <span />
             <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Name / Email</p>
             <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Company</p>
@@ -172,11 +246,23 @@ function CRM() {
             <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Source</p>
           </div>
           <div className="divide-y">
-            {filtered.map(c => (
-              <Link key={c.id} to="/candidates/$id" params={{ id: c.id }}>
-                <div className="group grid items-center gap-4 px-5 py-3.5 hover:bg-muted/40 transition-colors"
-                     style={{ gridTemplateColumns: CRM_COLS }}>
+            {filtered.map(c => {
+              const apps = (c as unknown as { applications: { id: string }[] }).applications;
+              const firstAppId = apps?.[0]?.id ?? null;
+              const isSelected = selected.has(c.id);
+              return (
+              <div
+                key={c.id}
+                onClick={() => { if (bulkMode) { toggleSelect(c.id); return; } if (firstAppId) setDrawerAppId(firstAppId); }}
+                className={`group grid items-center gap-4 px-5 py-3.5 hover:bg-muted/40 transition-colors cursor-pointer ${isSelected ? "bg-primary/5" : ""}`}
+                style={{ gridTemplateColumns: bulkMode ? `1.5rem ${CRM_COLS}` : CRM_COLS }}>
 
+                  {/* Bulk checkbox */}
+                  {bulkMode && (
+                    <div className={`shrink-0 h-4 w-4 rounded border-2 flex items-center justify-center transition-colors ${isSelected ? "bg-primary border-primary" : "border-muted-foreground/40"}`}>
+                      {isSelected && <div className="h-2 w-2 rounded-sm bg-white" />}
+                    </div>
+                  )}
                   {/* Avatar */}
                   <div className={`grid h-8 w-8 shrink-0 place-items-center rounded-full text-xs font-semibold ${avatarColor(c.id)}`}>
                     {initials(c.full_name)}
@@ -224,8 +310,8 @@ function CRM() {
                     )}
                   </div>
                 </div>
-              </Link>
-            ))}
+              );
+            })}
           </div>
           {filtered.length > 0 && (
             <div className="px-5 py-2.5 border-t bg-muted/20">
@@ -237,6 +323,8 @@ function CRM() {
           )}
         </Card>
       )}
+
+      <ApplicationDrawer applicationId={drawerAppId} onClose={() => setDrawerAppId(null)} />
     </div>
   );
 }
