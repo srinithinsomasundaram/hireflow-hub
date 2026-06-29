@@ -1,8 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import {
-  Mail, Phone, FileText, Sparkles, Loader2, ArrowUpRight,
-  Building2, Clock, ExternalLink,
+  Mail, Phone, FileText, Sparkles, Loader2,
+  Building2, Clock, User,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,7 +14,6 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Link } from "@tanstack/react-router";
 
 const STAGE_DOT: Record<string, string> = {
   applied: "bg-slate-400", screening: "bg-blue-500", hr_interview: "bg-indigo-500",
@@ -42,9 +41,10 @@ function initials(name: string) {
 type Props = {
   applicationId: string | null;
   onClose: () => void;
+  onOpenCandidate?: (candidateId: string) => void;
 };
 
-export function ApplicationDrawer({ applicationId, onClose }: Props) {
+export function ApplicationDrawer({ applicationId, onClose, onOpenCandidate }: Props) {
   const qc = useQueryClient();
   const { data: org } = useCurrentOrg();
   const [note, setNote] = useState("");
@@ -115,15 +115,19 @@ export function ApplicationDrawer({ applicationId, onClose }: Props) {
     toast.success("Note saved");
     setNote("");
     qc.invalidateQueries({ queryKey: ["app-drawer", applicationId] });
+    qc.invalidateQueries({ queryKey: ["candidate-drawer"] });
   }
 
   const c = app ? (app as unknown as {
     candidates: {
-      full_name: string; email: string; phone: string | null; resume_url: string | null;
-      current_company: string | null; experience_years: number | null; notes: string | null;
+      id: string; full_name: string; email: string; phone: string | null;
+      resume_url: string | null; current_company: string | null;
+      experience_years: number | null; notes: string | null;
+      current_salary: number | null; expected_salary: number | null;
+      notice_period: string | null;
     }
   }).candidates : null;
-  const j = app ? (app as unknown as { jobs: { title: string; department: string | null } }).jobs : null;
+  const j = app ? (app as unknown as { jobs: { title: string; department: string | null; location: string | null } }).jobs : null;
 
   return (
     <Sheet open={!!applicationId} onOpenChange={open => { if (!open) onClose(); }}>
@@ -142,22 +146,26 @@ export function ApplicationDrawer({ applicationId, onClose }: Props) {
                   {initials(c?.full_name ?? "?")}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <SheetTitle className="text-base font-semibold leading-tight truncate">
-                    {c?.full_name ?? "Unknown"}
-                  </SheetTitle>
+                  <div className="flex items-center gap-2">
+                    <SheetTitle className="text-base font-semibold leading-tight truncate">
+                      {c?.full_name ?? "Unknown"}
+                    </SheetTitle>
+                    {onOpenCandidate && c?.id && (
+                      <button
+                        onClick={() => onOpenCandidate(c.id)}
+                        className="shrink-0 flex items-center gap-0.5 text-[11px] text-muted-foreground hover:text-primary transition-colors"
+                        title="View candidate profile"
+                      >
+                        <User className="h-3 w-3" /> Profile
+                      </button>
+                    )}
+                  </div>
                   <p className="text-xs text-muted-foreground mt-0.5 truncate">
                     Applied to <span className="font-medium text-foreground">{j?.title}</span>
                     {j?.department && ` · ${j.department}`}
+                    {j?.location && ` · ${j.location}`}
                   </p>
                 </div>
-                <Link
-                  to="/applications/$id"
-                  params={{ id: app.id }}
-                  onClick={onClose}
-                  className="shrink-0 flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  Full view <ExternalLink className="h-3 w-3" />
-                </Link>
               </div>
 
               {/* Contact row */}
@@ -180,41 +188,66 @@ export function ApplicationDrawer({ applicationId, onClose }: Props) {
                     <Clock className="h-3.5 w-3.5" />{c.experience_years}y exp
                   </span>
                 )}
+                {c?.resume_url && (
+                  <button onClick={viewResume} className="flex items-center gap-1 hover:text-foreground transition-colors">
+                    <FileText className="h-3.5 w-3.5" /> Resume
+                  </button>
+                )}
               </div>
             </SheetHeader>
 
             {/* Scrollable body */}
             <div className="flex-1 overflow-y-auto divide-y">
 
-              {/* Stage + actions */}
+              {/* Stage */}
               <div className="px-5 py-4 space-y-3">
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Stage</p>
-                <div className="flex items-center gap-2">
-                  <Select value={app.stage} onValueChange={v => stageMut.mutate(v as Stage)}>
-                    <SelectTrigger className="flex-1 h-8 text-sm">
-                      <div className="flex items-center gap-2">
-                        <span className={`h-2 w-2 rounded-full ${STAGE_DOT[app.stage] ?? "bg-muted-foreground"}`} />
-                        <SelectValue />
-                      </div>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {STAGES.map(s => (
-                        <SelectItem key={s.id} value={s.id}>
-                          <span className="flex items-center gap-2">
-                            <span className={`h-2 w-2 rounded-full ${STAGE_DOT[s.id]}`} />
-                            {s.label}
-                          </span>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {c?.resume_url && (
-                    <Button size="sm" variant="outline" onClick={viewResume} className="gap-1 h-8 text-xs">
-                      <FileText className="h-3.5 w-3.5" /> Resume
-                    </Button>
-                  )}
-                </div>
+                <Select value={app.stage} onValueChange={v => stageMut.mutate(v as Stage)}>
+                  <SelectTrigger className="h-8 text-sm">
+                    <div className="flex items-center gap-2">
+                      <span className={`h-2 w-2 rounded-full ${STAGE_DOT[app.stage] ?? "bg-muted-foreground"}`} />
+                      <SelectValue />
+                    </div>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {STAGES.map(s => (
+                      <SelectItem key={s.id} value={s.id}>
+                        <span className="flex items-center gap-2">
+                          <span className={`h-2 w-2 rounded-full ${STAGE_DOT[s.id]}`} />
+                          {s.label}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
+
+              {/* Candidate details */}
+              {(c?.current_salary != null || c?.expected_salary != null || c?.notice_period) && (
+                <div className="px-5 py-4">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-3">Candidate details</p>
+                  <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
+                    {c?.current_salary != null && (
+                      <div>
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Current CTC</p>
+                        <p className="mt-0.5">₹ {Number(c.current_salary).toLocaleString()}</p>
+                      </div>
+                    )}
+                    {c?.expected_salary != null && (
+                      <div>
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Expected CTC</p>
+                        <p className="mt-0.5">₹ {Number(c.expected_salary).toLocaleString()}</p>
+                      </div>
+                    )}
+                    {c?.notice_period && (
+                      <div>
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Notice period</p>
+                        <p className="mt-0.5">{c.notice_period}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* AI Score */}
               <div className="px-5 py-4">
@@ -230,7 +263,7 @@ export function ApplicationDrawer({ applicationId, onClose }: Props) {
                   </button>
                 </div>
                 {app.ai_score != null ? (
-                  <div className={`rounded-lg border px-3 py-2 ${SCORE_COLOR(app.ai_score)}`}>
+                  <div className={`rounded-lg border px-3 py-2.5 ${SCORE_COLOR(app.ai_score)}`}>
                     <div className="flex items-center gap-1.5 text-sm font-semibold">
                       <Sparkles className="h-3.5 w-3.5" />
                       {app.ai_score}/100
@@ -240,7 +273,7 @@ export function ApplicationDrawer({ applicationId, onClose }: Props) {
                     )}
                   </div>
                 ) : (
-                  <p className="text-xs text-muted-foreground">Not scored yet</p>
+                  <p className="text-xs text-muted-foreground">Not scored yet — click "Score now" to analyze.</p>
                 )}
               </div>
 
@@ -248,7 +281,7 @@ export function ApplicationDrawer({ applicationId, onClose }: Props) {
               {app.cover_letter && (
                 <div className="px-5 py-4">
                   <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">Cover letter</p>
-                  <p className="text-xs text-muted-foreground leading-relaxed whitespace-pre-wrap line-clamp-6">{app.cover_letter}</p>
+                  <p className="text-xs text-muted-foreground leading-relaxed whitespace-pre-wrap">{app.cover_letter}</p>
                 </div>
               )}
 
@@ -273,20 +306,12 @@ export function ApplicationDrawer({ applicationId, onClose }: Props) {
               </div>
             </div>
 
-            {/* Footer quick links */}
+            {/* Footer */}
             <div className="shrink-0 border-t px-5 py-3 flex items-center justify-between gap-2 bg-muted/20">
               <p className="text-[11px] text-muted-foreground">
                 Applied {new Date(app.applied_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
                 {app.source && ` · via ${app.source}`}
               </p>
-              <Link
-                to="/applications/$id"
-                params={{ id: app.id }}
-                onClick={onClose}
-                className="flex items-center gap-1 text-xs font-medium text-primary hover:underline"
-              >
-                Full details <ArrowUpRight className="h-3 w-3" />
-              </Link>
             </div>
           </>
         )}

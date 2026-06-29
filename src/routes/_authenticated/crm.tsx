@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Star, Search, Loader2, Building2, ChevronRight, Tag, Users, CheckSquare, Square, X, Download, Trash2 } from "lucide-react";
 import { ApplicationDrawer } from "@/components/application-drawer";
+import { CandidateDrawer } from "@/components/candidate-drawer";
 
 export const Route = createFileRoute("/_authenticated/crm")({
   head: () => ({ meta: [{ title: "Talent CRM · HireFlow" }] }),
@@ -40,6 +41,7 @@ function CRM() {
   const [bulkMode, setBulkMode] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [drawerAppId, setDrawerAppId] = useState<string | null>(null);
+  const [drawerCandId, setDrawerCandId] = useState<string | null>(null);
 
   const { data, isLoading } = useQuery({
     enabled: !!org?.id,
@@ -253,7 +255,7 @@ function CRM() {
               return (
               <div
                 key={c.id}
-                onClick={() => { if (bulkMode) { toggleSelect(c.id); return; } if (firstAppId) setDrawerAppId(firstAppId); }}
+                onClick={() => { if (bulkMode) { toggleSelect(c.id); return; } setDrawerCandId(c.id); }}
                 className={`group grid items-center gap-4 px-5 py-3.5 hover:bg-muted/40 transition-colors cursor-pointer ${isSelected ? "bg-primary/5" : ""}`}
                 style={{ gridTemplateColumns: bulkMode ? `1.5rem ${CRM_COLS}` : CRM_COLS }}>
 
@@ -324,7 +326,16 @@ function CRM() {
         </Card>
       )}
 
-      <ApplicationDrawer applicationId={drawerAppId} onClose={() => setDrawerAppId(null)} />
+      <CandidateDrawer
+        candidateId={drawerCandId}
+        onClose={() => setDrawerCandId(null)}
+        onOpenApplication={id => { setDrawerCandId(null); setDrawerAppId(id); }}
+      />
+      <ApplicationDrawer
+        applicationId={drawerAppId}
+        onClose={() => setDrawerAppId(null)}
+        onOpenCandidate={id => { setDrawerAppId(null); setDrawerCandId(id); }}
+      />
     </div>
   );
 }

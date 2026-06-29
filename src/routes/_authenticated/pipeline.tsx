@@ -17,6 +17,7 @@ import { STAGES, type Stage } from "@/lib/stages";
 import { scoreApplication } from "@/lib/ai.functions";
 import type { PipelineStageConfig } from "@/lib/pipeline-config";
 import { ApplicationDrawer } from "@/components/application-drawer";
+import { CandidateDrawer } from "@/components/candidate-drawer";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
@@ -68,6 +69,7 @@ function Pipeline() {
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
   const [scoringIds, setScoringIds] = useState<Set<string>>(new Set());
   const [drawerAppId, setDrawerAppId] = useState<string | null>(null);
+  const [drawerCandId, setDrawerCandId] = useState<string | null>(null);
   const [bulkMode, setBulkMode] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [jobFilter, setJobFilter] = useState<string>("all");
@@ -285,7 +287,16 @@ function Pipeline() {
         </div>
       </DndContext>
 
-      <ApplicationDrawer applicationId={drawerAppId} onClose={() => setDrawerAppId(null)} />
+      <CandidateDrawer
+        candidateId={drawerCandId}
+        onClose={() => setDrawerCandId(null)}
+        onOpenApplication={id => { setDrawerCandId(null); setDrawerAppId(id); }}
+      />
+      <ApplicationDrawer
+        applicationId={drawerAppId}
+        onClose={() => setDrawerAppId(null)}
+        onOpenCandidate={id => { setDrawerAppId(null); setDrawerCandId(id); }}
+      />
     </div>
   );
 }

@@ -11,6 +11,7 @@ import { useCurrentOrg } from "@/hooks/use-current-org";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ApplicationDrawer } from "@/components/application-drawer";
+import { CandidateDrawer } from "@/components/candidate-drawer";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({ meta: [{ title: "Dashboard · HireFlow" }] }),
@@ -73,6 +74,7 @@ function greeting() {
 function Dashboard() {
   const { data: org } = useCurrentOrg();
   const [drawerAppId, setDrawerAppId] = useState<string | null>(null);
+  const [drawerCandId, setDrawerCandId] = useState<string | null>(null);
 
   const { data: stats } = useQuery({
     enabled: !!org?.id,
@@ -397,7 +399,16 @@ function Dashboard() {
         </div>
       </div>
 
-      <ApplicationDrawer applicationId={drawerAppId} onClose={() => setDrawerAppId(null)} />
+      <CandidateDrawer
+        candidateId={drawerCandId}
+        onClose={() => setDrawerCandId(null)}
+        onOpenApplication={id => { setDrawerCandId(null); setDrawerAppId(id); }}
+      />
+      <ApplicationDrawer
+        applicationId={drawerAppId}
+        onClose={() => setDrawerAppId(null)}
+        onOpenCandidate={id => { setDrawerAppId(null); setDrawerCandId(id); }}
+      />
     </div>
   );
 }

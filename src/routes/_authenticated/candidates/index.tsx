@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ApplicationDrawer } from "@/components/application-drawer";
+import { CandidateDrawer } from "@/components/candidate-drawer";
 
 export const Route = createFileRoute("/_authenticated/candidates/")({
   head: () => ({ meta: [{ title: "Candidates · HireFlow" }] }),
@@ -37,6 +38,7 @@ function Candidates() {
   const [bulkMode, setBulkMode] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [drawerAppId, setDrawerAppId] = useState<string | null>(null);
+  const [drawerCandId, setDrawerCandId] = useState<string | null>(null);
 
   const { data: candidates, isLoading } = useQuery({
     enabled: !!org?.id,
@@ -235,7 +237,7 @@ function Candidates() {
                     key={c.id}
                     onClick={() => {
                       if (bulkMode) { toggleSelect(c.id); return; }
-                      if (firstAppId) setDrawerAppId(firstAppId);
+                      setDrawerCandId(c.id);
                     }}
                     className={`flex items-center gap-3 px-5 py-3.5 hover:bg-muted/40 transition-colors cursor-pointer ${isSelected ? "bg-primary/5" : ""}`}
                   >
@@ -294,7 +296,16 @@ function Candidates() {
         )}
       </Card>
 
-      <ApplicationDrawer applicationId={drawerAppId} onClose={() => setDrawerAppId(null)} />
+      <CandidateDrawer
+        candidateId={drawerCandId}
+        onClose={() => setDrawerCandId(null)}
+        onOpenApplication={id => { setDrawerCandId(null); setDrawerAppId(id); }}
+      />
+      <ApplicationDrawer
+        applicationId={drawerAppId}
+        onClose={() => setDrawerAppId(null)}
+        onOpenCandidate={id => { setDrawerAppId(null); setDrawerCandId(id); }}
+      />
     </div>
   );
 }

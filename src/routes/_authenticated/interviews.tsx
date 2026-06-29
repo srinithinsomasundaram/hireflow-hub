@@ -12,6 +12,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Plus, Calendar, Video, Phone, Monitor, Users, Loader2, Clock, ExternalLink, CheckCircle2, XCircle, UserX, ChevronDown, ChevronRight } from "lucide-react";
 import { ApplicationDrawer } from "@/components/application-drawer";
+import { CandidateDrawer } from "@/components/candidate-drawer";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrentOrg } from "@/hooks/use-current-org";
@@ -240,6 +241,7 @@ function Interviews() {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [drawerAppId, setDrawerAppId] = useState<string | null>(null);
+  const [drawerCandId, setDrawerCandId] = useState<string | null>(null);
 
   const { data: interviews, isLoading } = useQuery({
     enabled: !!org?.id,
@@ -461,7 +463,16 @@ function Interviews() {
         </div>
       )}
 
-      <ApplicationDrawer applicationId={drawerAppId} onClose={() => setDrawerAppId(null)} />
+      <CandidateDrawer
+        candidateId={drawerCandId}
+        onClose={() => setDrawerCandId(null)}
+        onOpenApplication={id => { setDrawerCandId(null); setDrawerAppId(id); }}
+      />
+      <ApplicationDrawer
+        applicationId={drawerAppId}
+        onClose={() => setDrawerAppId(null)}
+        onOpenCandidate={id => { setDrawerAppId(null); setDrawerCandId(id); }}
+      />
     </div>
   );
 }
