@@ -19,16 +19,21 @@ function getSubdomainPrefix(): string {
   // If configured: exact root domain → no subdomain
   if (APP_DOMAIN && host === APP_DOMAIN) return "";
 
-  // If configured: must be <sub>.<APP_DOMAIN>
   if (APP_DOMAIN) {
     const suffix = "." + APP_DOMAIN;
-    if (!host.endsWith(suffix)) return "";
-    const sub = host.slice(0, host.length - suffix.length);
-    if (!sub || sub.includes(".") || RESERVED.has(sub)) return "";
-    return `/c/${sub}`;
+    if (host.endsWith(suffix)) {
+      const sub = host.slice(0, host.length - suffix.length);
+      if (!sub || RESERVED.has(sub)) return "";
+      // Clean single-label subdomain
+      if (!sub.includes(".")) return `/c/${sub}`;
+      // Multi-label sub means APP_DOMAIN is too broad — fall through below
+    } else {
+      // Completely different domain — not our subdomain
+      return "";
+    }
   }
 
-  // Fallback for local dev without APP_DOMAIN (e.g. nexora.localhost)
+  // Fallback: leftmost label (handles local dev and misconfigured APP_DOMAIN)
   const parts = host.split(".");
   if (parts.length < 2) return "";
   const sub = parts[0];

@@ -31,16 +31,22 @@ export function extractSubdomain(host: string | null | undefined): string | null
   // If configured: exact match is the root app → no subdomain
   if (APP_DOMAIN && hostname === APP_DOMAIN) return null;
 
-  // If configured: must be <sub>.<APP_DOMAIN> to be a tenant subdomain
   if (APP_DOMAIN) {
     const suffix = "." + APP_DOMAIN;
-    if (!hostname.endsWith(suffix)) return null;
-    const sub = hostname.slice(0, hostname.length - suffix.length);
-    if (!sub || sub.includes(".") || RESERVED.has(sub)) return null;
-    return sub;
+    if (hostname.endsWith(suffix)) {
+      const sub = hostname.slice(0, hostname.length - suffix.length);
+      if (!sub || RESERVED.has(sub)) return null;
+      // Clean single-label subdomain — exact match
+      if (!sub.includes(".")) return sub;
+      // Multi-label sub means APP_DOMAIN is too broad (e.g. "yesp.space" instead of
+      // "hireflow.yesp.space") — fall through to the label-based approach below.
+    } else {
+      // Completely different domain — definitely not our subdomain
+      return null;
+    }
   }
 
-  // Fallback for local dev without APP_DOMAIN set (e.g. nexora.localhost)
+  // Fallback: use the leftmost label (works for local dev and misconfigured APP_DOMAIN)
   const sub = parts[0];
   if (RESERVED.has(sub)) return null;
   return sub;

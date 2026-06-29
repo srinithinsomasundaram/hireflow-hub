@@ -13,6 +13,17 @@ import { PageLoader } from "@/components/loading";
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
   beforeLoad: async () => {
+    // Never serve admin UI on a tenant subdomain — redirect to the public careers page
+    if (typeof window !== "undefined") {
+      const host = window.location.hostname;
+      const appDomain = import.meta.env.VITE_APP_DOMAIN ?? "hireflow.yesp.space";
+      const onSubdomain =
+        appDomain && host !== appDomain && host.endsWith("." + appDomain);
+      if (onSubdomain) {
+        const slug = host.slice(0, host.length - appDomain.length - 1);
+        throw redirect({ to: "/c/$slug/careers/", params: { slug } });
+      }
+    }
     const { data, error } = await supabase.auth.getUser();
     if (error || !data.user) throw redirect({ to: "/auth" });
     return { user: data.user };
