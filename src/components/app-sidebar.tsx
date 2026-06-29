@@ -459,23 +459,16 @@ function WorkspaceSwitcher() {
   // Switching overlay state
   const [switching, setSwitching] = useState(false);
   const [switchingToName, setSwitchingToName] = useState("");
-  const [barProgress, setBarProgress] = useState(0);
 
   function handleSwitch(id: string, name: string) {
     if (id === org?.id) return;
     setOpen(false);
     setSwitchingToName(name);
     setSwitching(true);
-    setBarProgress(0);
-    // Animate progress bar 0→100% in 280ms via CSS transition
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => setBarProgress(100));
-    });
     setTimeout(() => {
       switchOrg(id);
       navigate({ to: "/dashboard" });
       setSwitching(false);
-      setBarProgress(0);
     }, 350);
   }
 
@@ -486,28 +479,8 @@ function WorkspaceSwitcher() {
       {/* ── Full-page switching overlay ── */}
       {switching && typeof document !== "undefined" && createPortal(
         <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-background">
-          {/* Spinning logo */}
-          <div className="relative mb-5">
-            <div className="grid h-14 w-14 place-items-center rounded-2xl bg-primary text-primary-foreground shadow-lg">
-              <Briefcase className="h-7 w-7" />
-            </div>
-            <div
-              className="absolute -inset-2 rounded-3xl border-[2.5px] border-primary/20 border-t-primary animate-spin"
-              style={{ animationDuration: "0.75s" }}
-            />
-          </div>
           <p className="text-sm font-semibold text-foreground">Switching workspace</p>
           <p className="text-xs text-muted-foreground mt-1">{switchingToName}</p>
-          {/* Animated progress bar */}
-          <div className="mt-5 w-36 h-0.5 rounded-full bg-muted overflow-hidden">
-            <div
-              className="h-full bg-primary rounded-full"
-              style={{
-                width: `${barProgress}%`,
-                transition: "width 280ms ease-out",
-              }}
-            />
-          </div>
         </div>,
         document.body,
       )}
