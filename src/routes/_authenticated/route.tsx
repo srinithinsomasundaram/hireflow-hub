@@ -24,9 +24,11 @@ export const Route = createFileRoute("/_authenticated")({
         throw redirect({ to: "/c/$slug/careers/", params: { slug } });
       }
     }
-    const { data, error } = await supabase.auth.getUser();
-    if (error || !data.user) throw redirect({ to: "/auth" });
-    return { user: data.user };
+    // getSession() reads from localStorage — no network round-trip, so nav is instant.
+    // The token is still validated server-side on every Supabase API call.
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) throw redirect({ to: "/auth" });
+    return { user: session.user };
   },
   component: AuthenticatedLayout,
 });
@@ -51,12 +53,12 @@ function AuthenticatedLayout() {
 
   useEffect(() => {
     (async () => {
-      const { data: u } = await supabase.auth.getUser();
-      if (!u.user) return;
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
       const { data: roles } = await supabase
         .from("user_roles")
         .select("organization_id")
-        .eq("user_id", u.user.id)
+        .eq("user_id", session.user.id)
         .limit(1);
       if (!roles || roles.length === 0) { navigate({ to: "/onboarding" }); return; }
       setCheckedOrg(true);
@@ -66,12 +68,12 @@ function AuthenticatedLayout() {
   // Heartbeat — keep last_seen_at current so others know this user is online
   useEffect(() => {
     async function ping() {
-      const { data: u } = await supabase.auth.getUser();
-      if (!u.user) return;
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
       await supabase
         .from("profiles")
         .update({ last_seen_at: new Date().toISOString() })
-        .eq("id", u.user.id);
+        .eq("id", session.user.id);
     }
     ping();
     const id = setInterval(ping, 60_000);
@@ -98,8 +100,8 @@ function AuthenticatedLayout() {
     queryKey: ["online-members", org?.id],
     refetchInterval: 60_000,
     queryFn: async () => {
-      const { data: u } = await supabase.auth.getUser();
-      const currentUserId = u.user?.id;
+      const { data: { session } } = await supabase.auth.getSession();
+      const currentUserId = session?.user?.id;
       const { data } = await supabase
         .from("user_roles")
         .select("user_id, profiles(id, full_name, email, avatar_url, last_seen_at)")
