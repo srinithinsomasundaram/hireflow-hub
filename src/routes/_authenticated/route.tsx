@@ -10,6 +10,7 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { OrgSwitcher } from "@/components/org-switcher";
 import { UserMenu } from "@/components/user-menu";
 import { PageLoader } from "@/components/loading";
+import { NotificationBell } from "@/components/notification-sidebar";
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
@@ -131,6 +132,7 @@ function AuthenticatedLayout() {
             <div className="h-5 w-px bg-border" />
             <OrgSwitcher />
             <div className="ml-auto flex items-center gap-3">
+              <NotificationBell />
               {/* Online team members */}
               {onlineMembers && onlineMembers.length > 0 && (
                 <div className="flex items-center -space-x-1.5">

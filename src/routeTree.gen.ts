@@ -35,6 +35,7 @@ import { Route as AuthenticatedAiIndexRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedSettingsTeamRouteImport } from './routes/_authenticated/settings/team'
 import { Route as AuthenticatedSettingsPipelineRouteImport } from './routes/_authenticated/settings/pipeline'
 import { Route as AuthenticatedSettingsIntegrationsRouteImport } from './routes/_authenticated/settings/integrations'
+import { Route as AuthenticatedSettingsFormRouteImport } from './routes/_authenticated/settings/form'
 import { Route as AuthenticatedSettingsBrandingRouteImport } from './routes/_authenticated/settings/branding'
 import { Route as AuthenticatedJobsNewRouteImport } from './routes/_authenticated/jobs/new'
 import { Route as AuthenticatedJobsIdRouteImport } from './routes/_authenticated/jobs/$id'
@@ -183,6 +184,12 @@ const AuthenticatedSettingsIntegrationsRoute =
     path: '/integrations',
     getParentRoute: () => AuthenticatedSettingsRouteRoute,
   } as any)
+const AuthenticatedSettingsFormRoute =
+  AuthenticatedSettingsFormRouteImport.update({
+    id: '/form',
+    path: '/form',
+    getParentRoute: () => AuthenticatedSettingsRouteRoute,
+  } as any)
 const AuthenticatedSettingsBrandingRoute =
   AuthenticatedSettingsBrandingRouteImport.update({
     id: '/branding',
@@ -263,6 +270,7 @@ export interface FileRoutesByFullPath {
   '/jobs/$id': typeof AuthenticatedJobsIdRoute
   '/jobs/new': typeof AuthenticatedJobsNewRoute
   '/settings/branding': typeof AuthenticatedSettingsBrandingRoute
+  '/settings/form': typeof AuthenticatedSettingsFormRoute
   '/settings/integrations': typeof AuthenticatedSettingsIntegrationsRoute
   '/settings/pipeline': typeof AuthenticatedSettingsPipelineRoute
   '/settings/team': typeof AuthenticatedSettingsTeamRoute
@@ -299,6 +307,7 @@ export interface FileRoutesByTo {
   '/jobs/$id': typeof AuthenticatedJobsIdRoute
   '/jobs/new': typeof AuthenticatedJobsNewRoute
   '/settings/branding': typeof AuthenticatedSettingsBrandingRoute
+  '/settings/form': typeof AuthenticatedSettingsFormRoute
   '/settings/integrations': typeof AuthenticatedSettingsIntegrationsRoute
   '/settings/pipeline': typeof AuthenticatedSettingsPipelineRoute
   '/settings/team': typeof AuthenticatedSettingsTeamRoute
@@ -338,6 +347,7 @@ export interface FileRoutesById {
   '/_authenticated/jobs/$id': typeof AuthenticatedJobsIdRoute
   '/_authenticated/jobs/new': typeof AuthenticatedJobsNewRoute
   '/_authenticated/settings/branding': typeof AuthenticatedSettingsBrandingRoute
+  '/_authenticated/settings/form': typeof AuthenticatedSettingsFormRoute
   '/_authenticated/settings/integrations': typeof AuthenticatedSettingsIntegrationsRoute
   '/_authenticated/settings/pipeline': typeof AuthenticatedSettingsPipelineRoute
   '/_authenticated/settings/team': typeof AuthenticatedSettingsTeamRoute
@@ -377,6 +387,7 @@ export interface FileRouteTypes {
     | '/jobs/$id'
     | '/jobs/new'
     | '/settings/branding'
+    | '/settings/form'
     | '/settings/integrations'
     | '/settings/pipeline'
     | '/settings/team'
@@ -413,6 +424,7 @@ export interface FileRouteTypes {
     | '/jobs/$id'
     | '/jobs/new'
     | '/settings/branding'
+    | '/settings/form'
     | '/settings/integrations'
     | '/settings/pipeline'
     | '/settings/team'
@@ -451,6 +463,7 @@ export interface FileRouteTypes {
     | '/_authenticated/jobs/$id'
     | '/_authenticated/jobs/new'
     | '/_authenticated/settings/branding'
+    | '/_authenticated/settings/form'
     | '/_authenticated/settings/integrations'
     | '/_authenticated/settings/pipeline'
     | '/_authenticated/settings/team'
@@ -663,6 +676,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSettingsIntegrationsRouteImport
       parentRoute: typeof AuthenticatedSettingsRouteRoute
     }
+    '/_authenticated/settings/form': {
+      id: '/_authenticated/settings/form'
+      path: '/form'
+      fullPath: '/settings/form'
+      preLoaderRoute: typeof AuthenticatedSettingsFormRouteImport
+      parentRoute: typeof AuthenticatedSettingsRouteRoute
+    }
     '/_authenticated/settings/branding': {
       id: '/_authenticated/settings/branding'
       path: '/branding'
@@ -738,6 +758,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedSettingsRouteRouteChildren {
   AuthenticatedSettingsBrandingRoute: typeof AuthenticatedSettingsBrandingRoute
+  AuthenticatedSettingsFormRoute: typeof AuthenticatedSettingsFormRoute
   AuthenticatedSettingsIntegrationsRoute: typeof AuthenticatedSettingsIntegrationsRoute
   AuthenticatedSettingsPipelineRoute: typeof AuthenticatedSettingsPipelineRoute
   AuthenticatedSettingsTeamRoute: typeof AuthenticatedSettingsTeamRoute
@@ -747,6 +768,7 @@ interface AuthenticatedSettingsRouteRouteChildren {
 const AuthenticatedSettingsRouteRouteChildren: AuthenticatedSettingsRouteRouteChildren =
   {
     AuthenticatedSettingsBrandingRoute: AuthenticatedSettingsBrandingRoute,
+    AuthenticatedSettingsFormRoute: AuthenticatedSettingsFormRoute,
     AuthenticatedSettingsIntegrationsRoute:
       AuthenticatedSettingsIntegrationsRoute,
     AuthenticatedSettingsPipelineRoute: AuthenticatedSettingsPipelineRoute,
