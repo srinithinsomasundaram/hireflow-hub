@@ -4,6 +4,7 @@ import {
   Link,
   createRootRouteWithContext,
   useRouter,
+  useRouterState,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
@@ -14,6 +15,19 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/error-reporting";
 import { supabase } from "@/integrations/supabase/client";
 import { Toaster } from "@/components/ui/sonner";
+
+function RouterProgressBar() {
+  const isLoading = useRouterState({ select: (s) => s.isLoading });
+  if (!isLoading) return null;
+  return (
+    <div className="fixed top-0 left-0 right-0 z-[9999] h-[3px] overflow-hidden bg-indigo-500/20 pointer-events-none">
+      <div
+        className="absolute inset-y-0 w-2/5 rounded-full bg-indigo-500"
+        style={{ animation: "nav-sweep 1.2s ease-in-out infinite" }}
+      />
+    </div>
+  );
+}
 
 function NotFoundComponent() {
   return (
@@ -110,6 +124,7 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
+      <RouterProgressBar />
       <Outlet />
       <Toaster richColors closeButton position="top-right" />
     </QueryClientProvider>
