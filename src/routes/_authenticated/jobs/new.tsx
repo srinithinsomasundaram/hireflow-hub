@@ -222,6 +222,9 @@ function NewJob() {
                 </div>
               )}
 
+              {!form.title && (
+                <p className="text-xs text-muted-foreground text-center pb-1">Add a job title to continue</p>
+              )}
               <div className="space-y-2 pt-1">
                 <Button
                   className="w-full gap-1.5"

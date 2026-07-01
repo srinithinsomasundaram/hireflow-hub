@@ -499,7 +499,7 @@ function Integrations() {
               <Button variant="outline" onClick={() => setSmtpOpen(false)}>Cancel</Button>
               <Button
                 onClick={() => saveSmtp.mutate(true)}
-                disabled={saveSmtp.isPending || !smtpForm.host || !smtpForm.username || !smtpForm.password}
+                disabled={saveSmtp.isPending || !smtpForm.host || !smtpForm.username || (!smtpForm.password && !smtpConfig?.host)}
                 className="gap-1.5"
               >
                 {saveSmtp.isPending && <Loader2 className="h-4 w-4 animate-spin" />}

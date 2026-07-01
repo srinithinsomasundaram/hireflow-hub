@@ -55,17 +55,21 @@ function AuthenticatedLayout() {
   const { data: org } = useCurrentOrg();
 
   useEffect(() => {
+    const timeout = setTimeout(() => setCheckedOrg(true), 6000);
     (async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
+      if (!session) { clearTimeout(timeout); return; }
       const { data: roles } = await supabase
         .from("user_roles")
         .select("organization_id")
         .eq("user_id", session.user.id)
+        .eq("status", "active")
         .limit(1);
+      clearTimeout(timeout);
       if (!roles || roles.length === 0) { navigate({ to: "/onboarding" }); return; }
       setCheckedOrg(true);
     })();
+    return () => clearTimeout(timeout);
   }, [navigate]);
 
   // Heartbeat — keep last_seen_at current so others know this user is online

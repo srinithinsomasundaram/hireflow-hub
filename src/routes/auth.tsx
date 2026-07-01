@@ -57,7 +57,7 @@ function AuthPage() {
         });
         if (error) throw error;
         toast.success("Account created — let's set up your workspace.");
-        navigate({ to: "/onboarding" });
+        navigate({ to: redirect ? safeRedirect : "/onboarding" });
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;

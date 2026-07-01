@@ -185,7 +185,7 @@ function Automations() {
   const [form, setForm]               = useState(EMPTY_FORM);
   const [categoryTab, setCategoryTab] = useState<TemplateCategory | "all">("all");
 
-  const { data: automations, isLoading } = useQuery({
+  const { data: automations, isLoading, isError } = useQuery({
     enabled: !!org?.id,
     queryKey: ["automations", org?.id],
     queryFn: async () => {
@@ -270,6 +270,7 @@ function Automations() {
   const showStageFilter       = form.trigger === "stage_changed";
 
   if (isLoading) return <div className="flex items-center justify-center py-24"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
+  if (isError) return <div className="flex items-center justify-center py-24 text-sm text-destructive">Failed to load automations. Please refresh the page.</div>;
 
   return (
     <div className="space-y-7">

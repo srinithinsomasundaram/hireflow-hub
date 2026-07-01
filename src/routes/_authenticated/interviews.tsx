@@ -99,12 +99,12 @@ export const scheduleInterviewFn = createServerFn({ method: "POST" })
       .eq("organization_id", data.organization_id)
       .maybeSingle();
 
-    if (!settings?.smtp_enabled || !settings.smtp_config) return {};
+    if (!settings?.smtp_enabled || !settings.smtp_config) return { emailSent: false };
 
     const { decryptSmtpConfig } = await import("@/lib/smtp-decrypt");
     const { sendSmtpEmail } = await import("@/lib/smtp");
     const smtp = decryptSmtpConfig(settings.smtp_config as Record<string, unknown>);
-    if (!smtp.host || !smtp.username || !smtp.password) return {};
+    if (!smtp.host || !smtp.username || !smtp.password) return { emailSent: false };
 
     const scheduled = new Date(data.scheduled_at);
     const dateStr = scheduled.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
@@ -131,9 +131,10 @@ export const scheduleInterviewFn = createServerFn({ method: "POST" })
 
     try {
       await sendSmtpEmail(smtp, candidate.email, `Interview Confirmation — ${jobTitle}`, html);
-    } catch {}
-
-    return {};
+      return { emailSent: true };
+    } catch {
+      return { emailSent: false };
+    }
   });
 
 // ─── Server function: update interview status ────────────────────────────────
@@ -276,8 +277,8 @@ function Interviews() {
 
   const create = useMutation({
     mutationFn: async () => {
-      if (!org) return;
-      await scheduleInterviewFn({
+      if (!org) return null;
+      return scheduleInterviewFn({
         data: {
           organization_id: org.id,
           application_id: form.application_id,
@@ -288,9 +289,15 @@ function Interviews() {
         },
       });
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       qc.invalidateQueries({ queryKey: ["interviews"] });
-      toast.success("Interview scheduled — confirmation email sent");
+      if (result?.emailSent) {
+        toast.success("Interview scheduled — confirmation email sent to candidate");
+      } else {
+        toast.success("Interview scheduled", {
+          description: "No confirmation email sent — SMTP is not configured.",
+        });
+      }
       setOpen(false);
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
