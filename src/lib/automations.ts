@@ -30,15 +30,12 @@ function substitute(template: string, vars: Record<string, string>) {
   return template.replace(/\{\{(\w+)\}\}/g, (_, key) => escapeHtml(vars[key] ?? `{{${key}}}`));
 }
 
-// Wrap plain-text body in a clean branded email shell
-function wrapEmail(body: string): string {
-  // Convert newlines to <br> for HTML
+function wrapEmail(body: string, workspaceName: string): string {
   const bodyHtml = body.replace(/\n/g, "<br>");
   return `
     <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:620px;margin:0 auto;background:#ffffff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;">
       <div style="background:#0f172a;padding:22px 32px;">
-        <span style="color:#ffffff;font-size:16px;font-weight:700;letter-spacing:-.3px;">HireFlow</span>
-        <span style="color:#475569;font-size:13px;margin-left:6px;">by YESP</span>
+        <span style="color:#ffffff;font-size:16px;font-weight:700;letter-spacing:-.3px;">${escapeHtml(workspaceName)}</span>
       </div>
       <div style="padding:36px 32px;">
         <p style="margin:0;font-size:15px;color:#374151;line-height:1.75;">${bodyHtml}</p>
@@ -102,19 +99,19 @@ export async function runAutomations(trigger: string, ctx: AutomationContext) {
       console.warn("[automations] org has no SMTP configured — skipping candidate email. Set up SMTP in Settings → Integrations.");
       return;
     }
-    const html = wrapEmail(body);
+    const html = wrapEmail(body, org?.company_name ?? "");
     console.log(`[automations] sending email to candidate ${candidate.email} — subject: ${subject}`);
     await sendSmtpEmail(orgSmtp, candidate.email, subject, html);
   }
 
-  // Team notifications use HireFlow's system email
   async function notifyTeam(message: string) {
     if (!org?.owner_id) return;
     const { data: user } = await sb.auth.admin.getUserById(org.owner_id);
     const email = user.user?.email;
     if (!email) return;
-    const html = wrapEmail(message);
-    await sendSystemEmail(email, `HireFlow: ${message.slice(0, 80)}`, html);
+    const workspaceName = org?.company_name ?? "Notification";
+    const html = wrapEmail(message, workspaceName);
+    await sendSystemEmail(email, `${workspaceName}: ${message.slice(0, 80)}`, html);
   }
 
   for (const auto of automations) {
@@ -155,9 +152,9 @@ export async function runAutomations(trigger: string, ctx: AutomationContext) {
           break;
         }
         case "send_offer_letter": {
-          const subject = substitute("Your offer letter — {{job_title}} at {{company_name}}", vars);
+          const subject = substitute("Formal Offer of Employment — {{job_title}} | {{company_name}}", vars);
           const message = substitute(
-            `Hi {{candidate_name}},\n\nWe're thrilled to extend an offer for the {{job_title}} position at {{company_name}}. Your official offer letter will follow shortly.\n\nLooking forward to having you on board.\n\nBest regards,\n{{company_name}} Talent Team`,
+            `Dear {{candidate_name}},\n\nOn behalf of {{company_name}}, we are pleased to extend a formal offer of employment for the {{job_title}} position. Your official offer letter will be provided under separate cover.\n\nWe look forward to welcoming you to the organisation.\n\nKind regards,\n{{company_name}} Talent Acquisition`,
             vars,
           );
           await sendToCandidate(subject, message);

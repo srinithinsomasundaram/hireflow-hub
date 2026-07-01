@@ -99,7 +99,7 @@ export const sendOfferLetterFn = createServerFn({ method: "POST" })
       </div>
     `;
 
-    await sendSmtpEmail(smtp, data.toEmail, `Offer Letter — ${data.jobTitle}`, html);
+    await sendSmtpEmail(smtp, data.toEmail, `Formal Offer of Employment — ${data.jobTitle}`, html);
 
     // Mark as sent in offer_letters table
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

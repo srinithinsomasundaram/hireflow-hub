@@ -113,9 +113,9 @@ export const scheduleInterviewFn = createServerFn({ method: "POST" })
 
     const html = `
       <div style="font-family:-apple-system,sans-serif;max-width:600px;margin:0 auto;padding:32px;color:#111;">
-        <h2 style="margin:0 0 20px;font-size:22px;">Interview Confirmed</h2>
-        <p style="margin:0 0 16px;">Hi ${escHtml(candidate.full_name)},</p>
-        <p style="margin:0 0 24px;">Your <strong>${escHtml(typeLabel)}</strong> interview for <strong>${escHtml(jobTitle)}</strong> has been scheduled.</p>
+        <h2 style="margin:0 0 20px;font-size:22px;">Interview Confirmation</h2>
+        <p style="margin:0 0 16px;">Dear ${escHtml(candidate.full_name)},</p>
+        <p style="margin:0 0 24px;">We are pleased to confirm that your <strong>${escHtml(typeLabel)}</strong> interview for the <strong>${escHtml(jobTitle)}</strong> position has been scheduled as follows.</p>
         <table style="border-collapse:collapse;width:100%;margin-bottom:24px;background:#f9f9f9;border-radius:8px;padding:16px;">
           <tr><td style="padding:8px 12px;color:#555;width:140px;font-size:14px;">Date</td><td style="padding:8px 12px;font-size:14px;font-weight:600;">${dateStr}</td></tr>
           <tr><td style="padding:8px 12px;color:#555;font-size:14px;">Time</td><td style="padding:8px 12px;font-size:14px;font-weight:600;">${timeStr}</td></tr>
@@ -123,13 +123,13 @@ export const scheduleInterviewFn = createServerFn({ method: "POST" })
           <tr><td style="padding:8px 12px;color:#555;font-size:14px;">Format</td><td style="padding:8px 12px;font-size:14px;font-weight:600;">${typeLabel}</td></tr>
           ${data.meeting_url ? `<tr><td style="padding:8px 12px;color:#555;font-size:14px;">Meeting link</td><td style="padding:8px 12px;font-size:14px;"><a href="${escHtml(data.meeting_url)}" style="color:#2563eb;">${escHtml(data.meeting_url)}</a></td></tr>` : ""}
         </table>
-        <p style="margin:0 0 8px;font-size:14px;color:#444;">Please reach out if you have any questions or need to reschedule.</p>
-        <p style="margin:0;font-size:14px;color:#444;">Best,<br/><strong>${smtp.from_name}</strong></p>
+        <p style="margin:0 0 8px;font-size:14px;color:#444;">Should you have any questions or need to reschedule, please do not hesitate to contact us.</p>
+        <p style="margin:0;font-size:14px;color:#444;">Kind regards,<br/><strong>${smtp.from_name}</strong></p>
       </div>
     `;
 
     try {
-      await sendSmtpEmail(smtp, candidate.email, `Interview confirmed — ${jobTitle}`, html);
+      await sendSmtpEmail(smtp, candidate.email, `Interview Confirmation — ${jobTitle}`, html);
     } catch {}
 
     return {};
