@@ -5,7 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   Briefcase, LayoutDashboard, ListChecks, Users, GitBranch, Calendar, UserCheck,
   Mail, Zap, Settings, FileText, Star, Globe, ChevronsUpDown, Plus, Check,
-  Building2, Loader2, CheckCircle2, ChevronRight, ImageIcon, X, RefreshCcw, Layers, Sparkles,
+  Building2, Loader2, CheckCircle2, ChevronRight, ImageIcon, X, RefreshCcw, Layers,
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent,
@@ -41,7 +41,6 @@ const tools = [
   { title: "Email Templates", url: "/email-templates", icon: Mail },
   { title: "Automations", url: "/automations", icon: Zap },
   { title: "Offer Letters", url: "/offers", icon: FileText },
-  { title: "AI Tools", url: "/ai", icon: Sparkles },
 ];
 
 const bottom = [{ title: "Settings", url: "/settings", icon: Settings }];
