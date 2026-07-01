@@ -28,7 +28,7 @@ function buildCsp(nonce: string): string {
     `script-src 'self' 'nonce-${nonce}'`,
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob: https:",
-    "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://generativelanguage.googleapis.com",
+    "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.openai.com",
     "font-src 'self' data:",
     "worker-src blob:",
     "object-src 'none'",

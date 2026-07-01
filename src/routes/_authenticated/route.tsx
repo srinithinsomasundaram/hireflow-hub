@@ -30,7 +30,6 @@ export const Route = createFileRoute("/_authenticated")({
     // The token is still validated server-side on every Supabase API call.
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) throw redirect({ to: "/auth" });
-    return { user: session.user };
   },
   component: AuthenticatedLayout,
 });

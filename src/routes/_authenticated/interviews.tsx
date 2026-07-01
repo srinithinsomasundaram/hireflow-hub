@@ -78,7 +78,7 @@ export const scheduleInterviewFn = createServerFn({ method: "POST" })
       meeting_url: data.meeting_url || null,
       duration_minutes: data.duration_minutes,
     });
-    if (intErr) throw intErr;
+    if (intErr) throw new Error(intErr.message);
 
     // Fetch candidate email + name + job title
     const { data: appData } = await sb
