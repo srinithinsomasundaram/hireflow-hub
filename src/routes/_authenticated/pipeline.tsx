@@ -265,7 +265,7 @@ function Pipeline() {
       {appsLoading && <KanbanSkeleton cols={5} />}
       <DndContext sensors={sensors} onDragEnd={onDragEnd}>
         <div
-          className={`flex gap-3 overflow-x-auto pb-6 ${appsLoading ? "hidden" : ""}`}
+          className={`flex gap-3 overflow-x-auto pb-6 scroll-smooth [-webkit-overflow-scrolling:touch] ${appsLoading ? "hidden" : ""}`}
           style={{ minHeight: "calc(100vh - 220px)" }}
         >
           {visibleStages.map(s => {

@@ -238,17 +238,21 @@ function JobsList() {
             <div className="divide-y">
             {filtered.map((j) => (
               <div key={j.id}
-                   className="group grid items-center gap-4 px-5 py-3.5 hover:bg-muted/40 transition-colors"
-                   style={{ gridTemplateColumns: "1fr 6rem 5.5rem 2.5rem" }}>
+                   className="group flex items-start sm:items-center gap-3 sm:gap-4 px-5 py-3.5 hover:bg-muted/40 transition-colors">
 
                 {/* Info */}
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className={`h-2 w-2 shrink-0 rounded-full ${STATUS_DOT[j.status] ?? "bg-muted-foreground"}`} />
-                  <div className="min-w-0">
-                    <Link to="/jobs/$id" params={{ id: j.id }}
-                          className="text-sm font-medium hover:underline underline-offset-2 truncate block">
-                      {j.title}
-                    </Link>
+                <div className="flex items-start sm:items-center gap-3 flex-1 min-w-0">
+                  <div className={`mt-1.5 sm:mt-0 h-2 w-2 shrink-0 rounded-full ${STATUS_DOT[j.status] ?? "bg-muted-foreground"}`} />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Link to="/jobs/$id" params={{ id: j.id }}
+                            className="text-sm font-medium hover:underline underline-offset-2 truncate">
+                        {j.title}
+                      </Link>
+                      <span className={`sm:hidden rounded-full border px-2 py-px text-[11px] font-medium capitalize ${STATUS_BADGE[j.status] ?? "bg-muted text-muted-foreground border-transparent"}`}>
+                        {j.status}
+                      </span>
+                    </div>
                     <div className="flex items-center gap-2.5 mt-0.5 flex-wrap">
                       {j.department && <span className="text-xs text-muted-foreground">{j.department}</span>}
                       {j.location && (
@@ -259,27 +263,30 @@ function JobsList() {
                       <span className="inline-flex items-center gap-1 text-xs text-muted-foreground capitalize">
                         <Clock className="h-3 w-3" />{j.employment_type.replaceAll("_", " ")}
                       </span>
+                      <span className="sm:hidden inline-flex items-center gap-1 text-xs text-muted-foreground">
+                        <Users className="h-3 w-3" />{appCounts?.[j.id] ?? 0} applicants
+                      </span>
                     </div>
                   </div>
                 </div>
 
-                {/* Application count */}
-                <div className="flex items-center justify-center gap-1.5">
+                {/* Application count — desktop */}
+                <div className="hidden sm:flex w-24 items-center justify-center gap-1.5 shrink-0">
                   <Users className="h-3.5 w-3.5 text-muted-foreground" />
                   <span className="text-sm font-medium tabular-nums">
                     {appCounts?.[j.id] ?? 0}
                   </span>
                 </div>
 
-                {/* Status */}
-                <div className="flex justify-center">
+                {/* Status — desktop */}
+                <div className="hidden sm:flex w-[5.5rem] justify-center shrink-0">
                   <span className={`rounded-full border px-2.5 py-0.5 text-xs font-medium capitalize ${STATUS_BADGE[j.status] ?? "bg-muted text-muted-foreground border-transparent"}`}>
                     {j.status}
                   </span>
                 </div>
 
                 {/* Actions */}
-                <div className="flex items-center justify-end">
+                <div className="shrink-0 ml-auto sm:ml-0">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button

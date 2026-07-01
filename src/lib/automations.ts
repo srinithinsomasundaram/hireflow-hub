@@ -153,12 +153,13 @@ export async function runAutomations(trigger: string, ctx: AutomationContext) {
           break;
         }
         case "send_offer_letter": {
-          const subject = substitute("Formal Offer of Employment — {{job_title}} | {{company_name}}", vars);
+          // Notify the recruiter (job provider) that an offer letter is ready — the formal
+          // letter is sent to the candidate separately from the Offer Letters page.
           const message = substitute(
-            `Dear {{candidate_name}},\n\nOn behalf of {{company_name}}, we are pleased to extend a formal offer of employment for the {{job_title}} position. Your official offer letter will be provided under separate cover.\n\nWe look forward to welcoming you to the organisation.\n\nKind regards,\n{{company_name}} Talent Acquisition`,
+            `An offer letter has been prepared for <strong>{{candidate_name}}</strong> for the <strong>{{job_title}}</strong> position. Please review and send it from the Offer Letters section.`,
             vars,
           );
-          await sendToCandidate(subject, message);
+          await notifyTeam(message);
           break;
         }
       }

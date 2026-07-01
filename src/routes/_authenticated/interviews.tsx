@@ -225,15 +225,11 @@ const INTERVIEW_COLS = "2.5rem 1fr 7rem 10rem 5rem 7rem auto";
 
 function InterviewColHeaders() {
   return (
-    <div className="hidden sm:grid px-5 py-2.5 border-b bg-muted/30"
-         style={{ gridTemplateColumns: INTERVIEW_COLS }}>
-      <span />
-      <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Candidate / Role</p>
-      <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Type</p>
-      <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Scheduled</p>
-      <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Duration</p>
+    <div className="hidden sm:flex items-center gap-3 px-5 py-2.5 border-b bg-muted/30">
+      <div className="w-8 shrink-0" />
+      <p className="flex-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Candidate / Role</p>
       <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Status</p>
-      <span />
+      <div className="w-7 shrink-0" />
     </div>
   );
 }
@@ -507,71 +503,63 @@ function InterviewRow({ interview: i, onUpdate, updating, onOpenDrawer }: { inte
 
   return (
     <>
-      <div className="group grid items-center gap-4 px-5 py-3.5 hover:bg-muted/40 transition-colors"
-           style={{ gridTemplateColumns: INTERVIEW_COLS }}>
+      <div className="group px-5 py-3.5 hover:bg-muted/40 transition-colors">
+        <div className="flex items-start gap-3">
 
-        {/* Avatar */}
-        <button
-          onClick={() => i.application_id && onOpenDrawer(i.application_id)}
-          className={`grid h-8 w-8 shrink-0 place-items-center rounded-full text-xs font-semibold hover:ring-2 hover:ring-primary/30 transition-all ${avatarColor(i.id)}`}
-          title="View application"
-        >
-          {initials(name)}
-        </button>
-
-        {/* Name + job */}
-        <div className="min-w-0">
+          {/* Avatar */}
           <button
             onClick={() => i.application_id && onOpenDrawer(i.application_id)}
-            className="text-sm font-medium truncate hover:text-primary transition-colors text-left w-full"
-          >{name}</button>
-          <p className="text-xs text-muted-foreground truncate">{a?.jobs?.title ?? ""}</p>
-          {i.feedback && (
-            <p className="text-xs text-muted-foreground mt-0.5 italic truncate">"{i.feedback}"</p>
-          )}
-        </div>
+            className={`mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full text-xs font-semibold hover:ring-2 hover:ring-primary/30 transition-all ${avatarColor(i.id)}`}
+            title="View application"
+          >
+            {initials(name)}
+          </button>
 
-        {/* Type */}
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground capitalize">
-          <TypeIcon className="h-3.5 w-3.5 shrink-0" />
-          {i.type}
-        </div>
+          {/* Main content */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <button
+                  onClick={() => i.application_id && onOpenDrawer(i.application_id)}
+                  className="text-sm font-medium truncate hover:text-primary transition-colors text-left"
+                >{name}</button>
+                <p className="text-xs text-muted-foreground truncate">{a?.jobs?.title ?? ""}</p>
+              </div>
+              {/* Status badge */}
+              <span className={`shrink-0 rounded-full border px-2.5 py-0.5 text-xs font-medium ${STATUS_STYLE[i.status] ?? "bg-muted text-muted-foreground"}`}>
+                {i.status.replace("_", " ")}
+              </span>
+            </div>
 
-        {/* Scheduled date + time */}
-        <div>
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <p className="text-xs font-medium">{date}</p>
-            {today && (
-              <span className="rounded-full bg-blue-100 text-blue-700 px-1.5 py-px text-[10px] font-semibold">Today</span>
+            {/* Detail row */}
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5 text-xs text-muted-foreground">
+              <span className="flex items-center gap-1 capitalize">
+                <TypeIcon className="h-3 w-3 shrink-0" />{i.type}
+              </span>
+              <span className="flex items-center gap-1">
+                {date}
+                {today && <span className="rounded-full bg-blue-100 text-blue-700 px-1.5 py-px text-[10px] font-semibold">Today</span>}
+                · {time}
+              </span>
+              <span>{i.duration_minutes}m</span>
+              {i.meeting_url && (
+                <a href={i.meeting_url} target="_blank" rel="noreferrer"
+                   className="flex items-center gap-1 text-primary hover:underline">
+                  <ExternalLink className="h-3 w-3" /> Join
+                </a>
+              )}
+            </div>
+            {i.feedback && (
+              <p className="text-xs text-muted-foreground mt-1 italic truncate">"{i.feedback}"</p>
             )}
           </div>
-          <p className="text-xs text-muted-foreground mt-0.5">{time}</p>
-        </div>
 
-        {/* Duration */}
-        <p className="text-xs text-muted-foreground">{i.duration_minutes}m</p>
-
-        {/* Status */}
-        <div>
-          <span className={`rounded-full border px-2.5 py-0.5 text-xs font-medium ${STATUS_STYLE[i.status] ?? "bg-muted text-muted-foreground"}`}>
-            {i.status.replace("_", " ")}
-          </span>
-        </div>
-
-        {/* Actions */}
-        <div className="flex items-center gap-1 shrink-0">
-          {i.meeting_url && (
-            <a href={i.meeting_url} target="_blank" rel="noreferrer">
-              <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground hover:text-foreground">
-                <ExternalLink className="h-3.5 w-3.5" />
-              </Button>
-            </a>
-          )}
+          {/* Actions */}
           {isScheduled && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button size="sm" variant="ghost" className="h-7 gap-1 text-xs px-2 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" disabled={updating}>
-                  Update <ChevronDown className="h-3 w-3" />
+                <Button size="sm" variant="ghost" className="h-7 gap-1 text-xs px-2 text-muted-foreground shrink-0" disabled={updating}>
+                  <ChevronDown className="h-3 w-3" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-44">

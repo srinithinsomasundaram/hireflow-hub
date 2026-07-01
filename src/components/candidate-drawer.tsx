@@ -108,7 +108,7 @@ export function CandidateDrawer({ candidateId, onClose, onOpenApplication }: Pro
 
   return (
     <Sheet open={!!candidateId} onOpenChange={open => { if (!open) onClose(); }}>
-      <SheetContent className="w-[38vw] max-w-[38vw] flex flex-col p-0 gap-0 overflow-hidden">
+      <SheetContent className="w-full sm:w-[480px] sm:max-w-[480px] flex flex-col p-0 gap-0 overflow-hidden">
         {isLoading || !c ? (
           <div className="flex flex-1 items-center justify-center">
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />

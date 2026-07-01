@@ -126,7 +126,7 @@ function AuthenticatedLayout() {
               <NotificationBell />
               {/* Online team members */}
               {onlineMembers && onlineMembers.length > 0 && (
-                <div className="flex items-center -space-x-1.5">
+                <div className="hidden lg:flex items-center -space-x-1.5">
                   {onlineMembers.slice(0, 5).map((m, i) => (
                     <div
                       key={m.id}
@@ -163,7 +163,7 @@ function AuthenticatedLayout() {
               </Link>
             </div>
           )}
-          <main className="flex-1 overflow-auto px-8 py-7">
+          <main className="flex-1 overflow-auto px-4 py-5 sm:px-8 sm:py-7">
             <Outlet />
           </main>
         </SidebarInset>
