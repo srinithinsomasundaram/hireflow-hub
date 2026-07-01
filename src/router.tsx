@@ -88,8 +88,8 @@ export const getRouter = () => {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: {
-        staleTime: 1000 * 60 * 2,   // data is fresh for 2 min — no refetch on tab switch
-        gcTime: 1000 * 60 * 10,     // keep unused cache for 10 min
+        staleTime: 1000 * 60 * 5,   // data is fresh for 5 min — no refetch on nav
+        gcTime: 1000 * 60 * 15,     // keep unused cache for 15 min
         refetchOnWindowFocus: false, // don't refetch every time user switches tabs
         retry: 1,                    // only retry once on failure (default 3 is slow)
       },
@@ -101,6 +101,7 @@ export const getRouter = () => {
     context: { queryClient },
     history: typeof window !== "undefined" ? createSubdomainAwareHistory() : undefined,
     scrollRestoration: true,
+    defaultPreload: "intent",        // start loading on hover, not click
     defaultPreloadStaleTime: 30_000, // preloaded data is good for 30s
   });
 

@@ -1,5 +1,5 @@
 import { createFileRoute, Outlet, redirect, useNavigate, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { MailWarning, ArrowRight } from "lucide-react";
@@ -49,27 +49,15 @@ type OnlineMember = {
 
 function AuthenticatedLayout() {
   const navigate = useNavigate();
-  const [checkedOrg, setCheckedOrg] = useState(false);
   useKeyboardShortcuts();
-  const { data: org } = useCurrentOrg();
+  const { data: org, isFetched: orgFetched } = useCurrentOrg();
 
+  // Redirect to onboarding when session exists but user has no org membership
   useEffect(() => {
-    const timeout = setTimeout(() => setCheckedOrg(true), 6000);
-    (async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) { clearTimeout(timeout); return; }
-      const { data: roles } = await supabase
-        .from("user_roles")
-        .select("organization_id")
-        .eq("user_id", session.user.id)
-        .eq("status", "active")
-        .limit(1);
-      clearTimeout(timeout);
-      if (!roles || roles.length === 0) { navigate({ to: "/onboarding" }); return; }
-      setCheckedOrg(true);
-    })();
-    return () => clearTimeout(timeout);
-  }, [navigate]);
+    if (orgFetched && org === null) {
+      navigate({ to: "/onboarding" });
+    }
+  }, [org, orgFetched, navigate]);
 
   // Heartbeat — keep last_seen_at current so others know this user is online
   useEffect(() => {
@@ -102,7 +90,7 @@ function AuthenticatedLayout() {
   });
 
   const { data: onlineMembers } = useQuery<OnlineMember[]>({
-    enabled: !!org?.id && checkedOrg,
+    enabled: !!org?.id && orgFetched,
     queryKey: ["online-members", org?.id],
     refetchInterval: 60_000,
     queryFn: async () => {
@@ -123,7 +111,7 @@ function AuthenticatedLayout() {
     },
   });
 
-  if (!checkedOrg) return <PageLoader />;
+  if (!orgFetched) return <PageLoader />;
 
   return (
     <SidebarProvider>
