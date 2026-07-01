@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Search, Users, CheckSquare, Square, X, Trash2, Download } from "lucide-react";
+import { Search, Users, CheckSquare, Square, X, Trash2, Download, Upload } from "lucide-react";
 import { CandidateSkeleton } from "@/components/loading";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ApplicationDrawer } from "@/components/application-drawer";
 import { CandidateDrawer } from "@/components/candidate-drawer";
+import { CandidateImportDialog } from "@/components/candidate-import-dialog";
 
 export const Route = createFileRoute("/_authenticated/candidates/")({
   head: () => ({ meta: [{ title: "Candidates · HireFlow" }] }),
@@ -39,6 +40,7 @@ function Candidates() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [drawerAppId, setDrawerAppId] = useState<string | null>(null);
   const [drawerCandId, setDrawerCandId] = useState<string | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
 
   const { data: candidates, isLoading } = useQuery({
     enabled: !!org?.id,
@@ -125,6 +127,15 @@ function Candidates() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 text-xs gap-1.5"
+            onClick={() => setImportOpen(true)}
+            title="Import from CSV or Excel"
+          >
+            <Upload className="h-3.5 w-3.5" /> Import
+          </Button>
           <Button
             variant="outline"
             size="sm"
@@ -296,6 +307,11 @@ function Candidates() {
         )}
       </Card>
 
+      <CandidateImportDialog
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        onImported={() => qc.invalidateQueries({ queryKey: ["candidates"] })}
+      />
       <CandidateDrawer
         candidateId={drawerCandId}
         onClose={() => setDrawerCandId(null)}

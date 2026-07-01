@@ -23,7 +23,7 @@ export const Route = createFileRoute("/_authenticated")({
         appDomain && host !== appDomain && host.endsWith("." + appDomain);
       if (onSubdomain) {
         const slug = host.slice(0, host.length - appDomain.length - 1);
-        throw redirect({ to: "/c/$slug/careers/", params: { slug } });
+        throw redirect({ to: "/c/$slug/careers", params: { slug } });
       }
     }
     // getSession() reads from localStorage — no network round-trip, so nav is instant.

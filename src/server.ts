@@ -30,6 +30,7 @@ function buildCsp(nonce: string): string {
     "img-src 'self' data: blob: https:",
     "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://generativelanguage.googleapis.com",
     "font-src 'self' data:",
+    "worker-src blob:",
     "object-src 'none'",
     "base-uri 'self'",
     "frame-ancestors 'self'",

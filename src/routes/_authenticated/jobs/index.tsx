@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Plus, ExternalLink, Pencil, Trash2, Briefcase, MapPin, Clock, ChevronRight, Users, Search, MoreHorizontal } from "lucide-react";
+import { Plus, ExternalLink, Pencil, Trash2, Briefcase, MapPin, Clock, ChevronRight, Users, Search, MoreHorizontal, Upload } from "lucide-react";
 import { ListSkeleton } from "@/components/loading";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -16,6 +16,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { JobImportDialog } from "@/components/job-import-dialog";
 
 function buildSubdomainUrl(slug: string, path = ""): string {
   const domain = import.meta.env.VITE_APP_DOMAIN ?? "hireflow.yesp.space";
@@ -46,8 +47,9 @@ type FilterKey = "all" | "published" | "draft" | "closed";
 function JobsList() {
   const { data: org } = useCurrentOrg();
   const qc = useQueryClient();
-  const [filter, setFilter] = useState<FilterKey>("all");
-  const [search, setSearch] = useState("");
+  const [filter, setFilter]       = useState<FilterKey>("all");
+  const [search, setSearch]       = useState("");
+  const [importing, setImporting] = useState(false);
 
   const { data: appCounts } = useQuery({
     enabled: !!org?.id,
@@ -153,6 +155,9 @@ function JobsList() {
                 className="h-8 pl-8 pr-3 text-xs w-48 focus:w-56 transition-all"
               />
             </div>
+            <Button size="sm" variant="outline" className="gap-1.5 h-8 text-xs px-3" onClick={() => setImporting(true)}>
+              <Upload className="h-3.5 w-3.5" />Import
+            </Button>
             <Link to="/jobs/new">
               <Button size="sm" className="gap-1.5 shadow-sm h-8 text-xs px-3">
                 <Plus className="h-3.5 w-3.5" />New job
@@ -319,6 +324,11 @@ function JobsList() {
           </>
         )}
       </Card>
+      <JobImportDialog
+        open={importing}
+        onClose={() => setImporting(false)}
+        onImported={() => qc.invalidateQueries({ queryKey: ["jobs"] })}
+      />
     </div>
   );
 }

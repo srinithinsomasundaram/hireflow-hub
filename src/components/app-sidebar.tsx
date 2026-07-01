@@ -16,7 +16,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -233,6 +233,7 @@ function CreateWorkspaceDialog({
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) handleClose(); }}>
       <DialogContent className="sm:max-w-lg p-0 overflow-hidden">
+        <DialogTitle className="sr-only">Create workspace</DialogTitle>
         <div className="bg-gray-50 px-6 py-5 border-b">
           {/* Header brand */}
           <div className="flex items-center gap-2 text-sm font-semibold text-gray-900 mb-5">
