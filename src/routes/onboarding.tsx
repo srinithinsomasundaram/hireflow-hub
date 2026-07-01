@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { createClient } from "@supabase/supabase-js";
+import ws from "ws";
 import { z } from "zod";
 import { extractSubdomain } from "@/lib/subdomain";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -26,7 +27,7 @@ export const findAvailableSlug = createServerFn({ method: "GET" })
     const sb = createClient<Database>(
       process.env.SUPABASE_URL!,
       process.env.SUPABASE_PUBLISHABLE_KEY!,
-      { auth: { storage: undefined, persistSession: false, autoRefreshToken: false } },
+      { realtime: { transport: ws }, auth: { storage: undefined, persistSession: false, autoRefreshToken: false } },
     );
 
     // Fetch all slugs that start with the base so we can find the first gap in one query

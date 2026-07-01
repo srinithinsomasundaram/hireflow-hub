@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { createClient } from "@supabase/supabase-js";
+import ws from "ws";
 import { z } from "zod";
 import type { Database } from "@/integrations/supabase/types";
 import { Briefcase, MapPin, Building2, IndianRupee } from "lucide-react";
@@ -67,7 +68,7 @@ export const getOrgWithJobs = createServerFn({ method: "GET" })
     const supabase = createClient<Database>(
       process.env.SUPABASE_URL!,
       process.env.SUPABASE_PUBLISHABLE_KEY!,
-      { auth: { storage: undefined, persistSession: false, autoRefreshToken: false } },
+      { realtime: { transport: ws }, auth: { storage: undefined, persistSession: false, autoRefreshToken: false } },
     );
     const { data: org } = await supabase
       .from("organizations")

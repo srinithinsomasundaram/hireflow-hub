@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { createClient } from "@supabase/supabase-js";
+import ws from "ws";
 import { createHmac } from "node:crypto";
 import { z } from "zod";
 import { useState } from "react";
@@ -28,7 +29,7 @@ export const getPublicJob = createServerFn({ method: "GET" })
     const sb = createClient<Database>(
       process.env.SUPABASE_URL!,
       process.env.SUPABASE_PUBLISHABLE_KEY!,
-      { auth: { storage: undefined, persistSession: false, autoRefreshToken: false } },
+      { realtime: { transport: ws }, auth: { storage: undefined, persistSession: false, autoRefreshToken: false } },
     );
     const { data: job } = await sb
       .from("jobs")
@@ -39,7 +40,7 @@ export const getPublicJob = createServerFn({ method: "GET" })
     const sbAdmin = createClient<Database>(
       process.env.SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      { auth: { storage: undefined, persistSession: false, autoRefreshToken: false } },
+      { realtime: { transport: ws }, auth: { storage: undefined, persistSession: false, autoRefreshToken: false } },
     );
     const { data: settings } = await sbAdmin
       .from("organization_settings")
@@ -106,7 +107,7 @@ export const submitApplicationFn = createServerFn({ method: "POST" })
     const sb = createClient<Database>(
       process.env.SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      { auth: { storage: undefined, persistSession: false, autoRefreshToken: false } },
+      { realtime: { transport: ws }, auth: { storage: undefined, persistSession: false, autoRefreshToken: false } },
     );
 
     // Upsert candidate — if same email already applied to this org, reuse the record.

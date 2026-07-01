@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { createClient } from "@supabase/supabase-js";
+import ws from "ws";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
@@ -57,7 +58,7 @@ export const scheduleInterviewFn = createServerFn({ method: "POST" })
     const sb = createClient<Database>(
       process.env.SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      { auth: { persistSession: false, autoRefreshToken: false } },
+      { realtime: { transport: ws }, auth: { persistSession: false, autoRefreshToken: false } },
     );
 
     // Verify the application belongs to this org (service role bypasses RLS)
@@ -159,7 +160,7 @@ export const updateInterviewStatusFn = createServerFn({ method: "POST" })
     const sb = createClient<Database>(
       process.env.SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      { auth: { persistSession: false, autoRefreshToken: false } },
+      { realtime: { transport: ws }, auth: { persistSession: false, autoRefreshToken: false } },
     );
     const { error } = await sb
       .from("interviews")

@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import ws from "ws";
 import type { Database } from "@/integrations/supabase/types";
 import { sendSmtpEmail } from "./smtp";
 import { decryptSmtpConfig } from "./smtp-decrypt";
@@ -48,7 +49,7 @@ export async function runAutomations(trigger: string, ctx: AutomationContext) {
   const sb = createClient<Database>(
     process.env.SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { persistSession: false, autoRefreshToken: false } },
+    { realtime: { transport: ws }, auth: { persistSession: false, autoRefreshToken: false } },
   );
 
   // Fetch matching enabled automations
