@@ -79,13 +79,15 @@ export function ApplicationDrawer({ applicationId, onClose, onOpenCandidate }: P
 
   async function handleScore() {
     if (scoring || !applicationId) return;
+    const alreadyScored = app?.ai_score != null;
+    if (alreadyScored && !confirm("This candidate is already scored. Re-score with AI?")) return;
     setScoring(true);
     try {
-      await scoreApplication({ data: { applicationId } });
+      await scoreApplication({ data: { applicationId, force: alreadyScored } });
       qc.invalidateQueries({ queryKey: ["app-drawer", applicationId] });
-      toast.success("YESP AI has scored this candidate");
+      toast.success("Candidate scored successfully");
     } catch {
-      toast.error("YESP AI scoring failed");
+      toast.error("AI scoring failed — please try again");
     } finally {
       setScoring(false);
     }

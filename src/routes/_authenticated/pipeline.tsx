@@ -139,15 +139,16 @@ function Pipeline() {
     onError: (e) => toast.error(e instanceof Error ? e.message : "Could not move"),
   });
 
-  async function handleScore(appId: string) {
+  async function handleScore(appId: string, alreadyScored = false) {
     if (scoringIds.has(appId)) return;
+    if (alreadyScored && !confirm("This candidate is already scored. Re-score with AI?")) return;
     setScoringIds(s => new Set(s).add(appId));
     try {
-      await scoreApplication({ data: { applicationId: appId } });
+      await scoreApplication({ data: { applicationId: appId, force: alreadyScored } });
       qc.invalidateQueries({ queryKey: ["pipeline", org?.id] });
-      toast.success("YESP AI has scored this candidate");
+      toast.success("Candidate scored successfully");
     } catch {
-      toast.error("YESP AI scoring failed");
+      toast.error("AI scoring failed — please try again");
     } finally {
       setScoringIds(s => { const n = new Set(s); n.delete(appId); return n; });
     }
@@ -328,7 +329,7 @@ function Column({
           <Draggable
             key={a.id}
             app={a}
-            onScore={() => onScore(a.id)}
+            onScore={() => onScore(a.id, a.ai_score != null)}
             isScoring={scoringIds.has(a.id)}
             bulkMode={bulkMode}
             isSelected={selected.has(a.id)}

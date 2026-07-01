@@ -221,7 +221,7 @@ function Offers() {
     }
   }
 
-  async function generateAll() {
+  async function generateAll(force = false) {
     if (selected.size === 0) { toast.error("Select at least one candidate."); return; }
     setGenerating(true);
     setLetters([]);
@@ -229,28 +229,35 @@ function Offers() {
     const ids = [...selected];
     const results: LetterResult[] = [];
 
-    for (const appId of ids) {
-      const app = apps?.find(a => a.id === appId);
-      if (!app) continue;
-      try {
-        const res = await generateOfferLetter({
-          data: { applicationId: appId, salary: salary || undefined, startDate: startDate || undefined, tone },
-        });
-        const existing = existingLetters?.find(l => l.application_id === appId);
-        results.push({
-          id: res.id,
-          applicationId: appId,
-          content: res.content,
-          candidateName: res.candidateName,
-          candidateEmail: res.candidateEmail,
-          jobTitle: res.jobTitle,
-          sentAt: existing?.sent_at ?? null,
-          expanded: true,
-          copied: false,
-        });
-      } catch (e) {
-        toast.error(`Failed for ${app.candidates?.full_name ?? "candidate"}: ${e instanceof Error ? e.message : "Unknown error"}`);
-      }
+    // Process in batches of 3 to respect rate limits
+    for (let i = 0; i < ids.length; i += 3) {
+      const batch = ids.slice(i, i + 3);
+      const settled = await Promise.allSettled(
+        batch.map(appId => generateOfferLetter({
+          data: { applicationId: appId, salary: salary || undefined, startDate: startDate || undefined, tone, force },
+        }))
+      );
+      settled.forEach((result, idx) => {
+        const appId = batch[idx];
+        const app = apps?.find(a => a.id === appId);
+        if (result.status === "fulfilled") {
+          const res = result.value;
+          const existing = existingLetters?.find(l => l.application_id === appId);
+          results.push({
+            id: res.id,
+            applicationId: appId,
+            content: res.content,
+            candidateName: res.candidateName,
+            candidateEmail: res.candidateEmail,
+            jobTitle: res.jobTitle,
+            sentAt: existing?.sent_at ?? null,
+            expanded: true,
+            copied: false,
+          });
+        } else {
+          toast.error(`Failed for ${app?.candidates?.full_name ?? "candidate"}: ${result.reason instanceof Error ? result.reason.message : "Unknown error"}`);
+        }
+      });
     }
 
     setLetters(results);

@@ -58,9 +58,13 @@ function AppDetail() {
   });
 
   const ai = useMutation({
-    mutationFn: async () => scoreApplication({ data: { applicationId: id } }),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["app", id] }); toast.success("YESP AI has scored this candidate"); },
-    onError: e => toast.error(e instanceof Error ? e.message : "YESP AI scoring failed"),
+    mutationFn: async () => {
+      const alreadyScored = app?.ai_score != null;
+      if (alreadyScored && !confirm("This candidate is already scored. Re-score with AI?")) return;
+      return scoreApplication({ data: { applicationId: id, force: alreadyScored } });
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["app", id] }); toast.success("Candidate scored successfully"); },
+    onError: e => toast.error(e instanceof Error ? e.message : "AI scoring failed — please try again"),
   });
 
   if (isLoading) return (
