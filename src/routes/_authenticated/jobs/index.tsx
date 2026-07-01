@@ -44,8 +44,11 @@ const STATUS_BADGE: Record<string, string> = {
 
 type FilterKey = "all" | "published" | "draft" | "closed";
 
+const CAN_MANAGE_JOBS = ["owner", "admin", "recruiter", "hiring_manager"];
+
 function JobsList() {
   const { data: org } = useCurrentOrg();
+  const canManage = org ? CAN_MANAGE_JOBS.includes(org.role) : false;
   const qc = useQueryClient();
   const [filter, setFilter]       = useState<FilterKey>("all");
   const [search, setSearch]       = useState("");
@@ -155,14 +158,18 @@ function JobsList() {
                 className="h-8 pl-8 pr-3 text-xs w-48 focus:w-56 transition-all"
               />
             </div>
-            <Button size="sm" variant="outline" className="gap-1.5 h-8 text-xs px-3" onClick={() => setImporting(true)}>
-              <Upload className="h-3.5 w-3.5" />Import
-            </Button>
-            <Link to="/jobs/new">
-              <Button size="sm" className="gap-1.5 shadow-sm h-8 text-xs px-3">
-                <Plus className="h-3.5 w-3.5" />New job
-              </Button>
-            </Link>
+            {canManage && (
+              <>
+                <Button size="sm" variant="outline" className="gap-1.5 h-8 text-xs px-3" onClick={() => setImporting(true)}>
+                  <Upload className="h-3.5 w-3.5" />Import
+                </Button>
+                <Link to="/jobs/new">
+                  <Button size="sm" className="gap-1.5 shadow-sm h-8 text-xs px-3">
+                    <Plus className="h-3.5 w-3.5" />New job
+                  </Button>
+                </Link>
+              </>
+            )}
           </div>
         </div>
         <div className="mt-4 border-b" />
@@ -308,13 +315,17 @@ function JobsList() {
                           : <><ExternalLink className="h-3.5 w-3.5" /> Publish</>
                         }
                       </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        className="flex items-center gap-2 text-destructive focus:text-destructive"
-                        onClick={() => { if (confirm("Delete this job?")) del.mutate(j.id); }}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" /> Delete
-                      </DropdownMenuItem>
+                      {canManage && (
+                        <>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            className="flex items-center gap-2 text-destructive focus:text-destructive"
+                            onClick={() => { if (confirm("Delete this job?")) del.mutate(j.id); }}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" /> Delete
+                          </DropdownMenuItem>
+                        </>
+                      )}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>

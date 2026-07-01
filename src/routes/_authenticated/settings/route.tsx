@@ -1,4 +1,6 @@
 import { createFileRoute, Outlet, Link, useRouterState } from "@tanstack/react-router";
+import { ShieldOff } from "lucide-react";
+import { useCurrentOrg } from "@/hooks/use-current-org";
 
 export const Route = createFileRoute("/_authenticated/settings")({
   head: () => ({ meta: [{ title: "Settings · HireFlow" }] }),
@@ -14,8 +16,24 @@ const tabs = [
   { to: "/settings/integrations", label: "Integrations" },
 ];
 
+const ADMIN_ROLES = ["owner", "admin"];
+
 function SettingsLayout() {
   const path = useRouterState({ select: r => r.location.pathname });
+  const { data: org } = useCurrentOrg();
+
+  if (org && !ADMIN_ROLES.includes(org.role)) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 text-center">
+        <ShieldOff className="h-10 w-10 text-muted-foreground/40 mb-4" />
+        <p className="font-semibold text-base">Access restricted</p>
+        <p className="text-sm text-muted-foreground mt-1 max-w-xs">
+          Only workspace owners and admins can access Settings. Contact your workspace admin if you need changes made.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 max-w-3xl">
       <div>

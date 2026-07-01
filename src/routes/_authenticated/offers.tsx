@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { createClient } from "@supabase/supabase-js";
 import ws from "ws";
@@ -12,7 +12,7 @@ function escHtml(s: string): string {
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import {
-  FileText, Sparkles, Send, Loader2, CheckCircle2, Clock,
+  FileText, Sparkles, Send, Loader2, CheckCircle2, Clock, MailWarning, ArrowRight,
   ChevronDown, ChevronUp, Mail, Copy, Check,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -155,6 +155,20 @@ function Offers() {
   const [letters, setLetters] = useState<LetterResult[]>([]);
   const [generating, setGenerating] = useState(false);
   const [sendingIdx, setSendingIdx] = useState<number | null>(null);
+
+  const { data: smtpReady } = useQuery({
+    enabled: !!org?.id,
+    queryKey: ["email-configured", org?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("organization_settings")
+        .select("smtp_enabled, smtp_config")
+        .eq("organization_id", org!.id)
+        .maybeSingle();
+      const cfg = data?.smtp_config as Record<string, string> | null;
+      return !!(data?.smtp_enabled && cfg?.host && cfg?.username && cfg?.password);
+    },
+  });
 
   // Fetch candidates in final stages
   const { data: apps, isLoading } = useQuery({
@@ -309,6 +323,22 @@ function Offers() {
           Select candidates, configure offer details, and generate personalised AI offer letters — then send directly.
         </p>
       </div>
+
+      {smtpReady === false && (
+        <div className="flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+          <MailWarning className="h-4 w-4 shrink-0 text-amber-600" />
+          <p className="text-sm text-amber-800 flex-1">
+            <span className="font-semibold">Email not configured.</span>{" "}
+            Offer letters can be generated but cannot be sent until you set up SMTP.
+          </p>
+          <Link
+            to="/settings/integrations"
+            className="inline-flex items-center gap-1 text-xs font-semibold text-amber-700 hover:text-amber-900 shrink-0"
+          >
+            Set up now <ArrowRight className="h-3 w-3" />
+          </Link>
+        </div>
+      )}
 
       {/* Configuration card */}
       <Card className="shadow-sm">

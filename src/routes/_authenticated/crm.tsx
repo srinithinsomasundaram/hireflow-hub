@@ -233,6 +233,12 @@ function CRM() {
             <p className="text-xs text-muted-foreground mt-1">
               {q || tab !== "all" ? "Try adjusting your search or filter." : "Candidates appear here as they apply or are added."}
             </p>
+            {!q && tab === "all" && (
+              <div className="flex items-center justify-center gap-2 mt-4">
+                <Link to="/jobs"><Button size="sm" variant="outline" className="text-xs h-8">Post a job</Button></Link>
+                <Link to="/pipeline"><Button size="sm" variant="outline" className="text-xs h-8">View pipeline</Button></Link>
+              </div>
+            )}
           </CardContent>
         </Card>
       ) : (
