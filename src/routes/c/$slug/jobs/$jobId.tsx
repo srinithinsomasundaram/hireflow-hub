@@ -373,13 +373,25 @@ export const submitApplicationFn = createServerFn({ method: "POST" })
 export const Route = createFileRoute("/c/$slug/jobs/$jobId")({
   loader: ({ params }) => getPublicJob({ data: { jobId: params.jobId } }),
   head: ({ loaderData }) => {
-    const org = loaderData
+    const org   = loaderData
       ? (loaderData as unknown as { organizations: { company_name: string; logo_url: string | null } }).organizations
       : null;
+    const title = loaderData ? `${loaderData.title} · ${org?.company_name ?? "Careers"}` : "Job · Careers";
+    const desc  = loaderData?.description?.slice(0, 160)
+      ?? (loaderData ? `Apply for ${loaderData.title}${org?.company_name ? ` at ${org.company_name}` : ""}.` : "Apply now");
+    const image = org?.logo_url ?? null;
     return {
       meta: [
-        { title: loaderData ? `${loaderData.title} · ${org?.company_name ?? "Careers"}` : "Job · Careers" },
-        { name: "description", content: loaderData?.description?.slice(0, 160) ?? "Apply now" },
+        { title },
+        { name: "description", content: desc },
+        { property: "og:type",        content: "website" },
+        { property: "og:title",       content: title },
+        { property: "og:description", content: desc },
+        ...(image ? [{ property: "og:image", content: image }] : []),
+        { name: "twitter:card",        content: "summary" },
+        { name: "twitter:title",       content: title },
+        { name: "twitter:description", content: desc },
+        ...(image ? [{ name: "twitter:image", content: image }] : []),
       ],
       links: org?.logo_url ? [{ rel: "icon", href: org.logo_url }] : [],
     };

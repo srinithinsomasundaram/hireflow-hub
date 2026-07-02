@@ -100,14 +100,28 @@ function fmtSalary(min: number, max: number) {
 
 export const Route = createFileRoute("/c/$slug/careers/")({
   loader: ({ params }) => getOrgWithJobs({ data: { slug: params.slug } }),
-  head: ({ loaderData }) => ({
-    meta: [
-      { title: loaderData ? `Careers at ${loaderData.org.company_name}` : "Careers · HireFlow" },
-      { name: "description", content: loaderData ? `Open positions at ${loaderData.org.company_name}.` : "Careers" },
-      { property: "og:title", content: loaderData ? `Careers at ${loaderData.org.company_name}` : "Careers" },
-    ],
-    links: loaderData?.org.logo_url ? [{ rel: "icon", href: loaderData.org.logo_url }] : [],
-  }),
+  head: ({ loaderData }) => {
+    const name  = loaderData?.org.company_name ?? "";
+    const title = name ? `Careers at ${name}` : "Careers";
+    const desc  = loaderData?.settings?.careers_tagline
+      ?? (name ? `${name} is hiring — explore open positions and apply today.` : "Explore open positions.");
+    const image = loaderData?.settings?.brand_logo_url ?? loaderData?.org.logo_url ?? null;
+    return {
+      meta: [
+        { title },
+        { name: "description", content: desc },
+        { property: "og:type",        content: "website" },
+        { property: "og:title",       content: title },
+        { property: "og:description", content: desc },
+        ...(image ? [{ property: "og:image", content: image }] : []),
+        { name: "twitter:card",        content: image ? "summary" : "summary" },
+        { name: "twitter:title",       content: title },
+        { name: "twitter:description", content: desc },
+        ...(image ? [{ name: "twitter:image", content: image }] : []),
+      ],
+      links: loaderData?.org.logo_url ? [{ rel: "icon", href: loaderData.org.logo_url }] : [],
+    };
+  },
   component: CareersListing,
   errorComponent: () => <div className="p-12 text-center text-sm text-muted-foreground">Could not load this careers site.</div>,
   notFoundComponent: () => <div className="p-12 text-center">Workspace not found.</div>,
