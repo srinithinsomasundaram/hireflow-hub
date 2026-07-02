@@ -8,6 +8,7 @@ import { z } from "zod";
 import { useState } from "react";
 import { toast } from "sonner";
 import type { Database } from "@/integrations/supabase/types";
+import { scoreApplicationCore } from "@/lib/ai.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { sendSystemEmail } from "@/lib/system-email";
 import { runAutomations } from "@/lib/automations";
@@ -157,6 +158,9 @@ export const submitApplicationFn = createServerFn({ method: "POST" })
     }).select("id").single();
 
     if (appErr) return { error: "Failed to submit application. Please try again." };
+
+    // Auto-score in the background — fire and forget, never blocks the response
+    scoreApplicationCore(sb, app.id).catch(() => {});
 
     // Fire application_received automations (thank-you emails etc.)
     await runAutomations("application_received", {

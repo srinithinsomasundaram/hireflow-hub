@@ -98,6 +98,8 @@ export const generateOfferLetter = createServerFn({ method: "POST" })
     const tone = data.tone ?? "warm";
 
     const res = await openaiRequest(key, {
+      temperature: 0.3,
+      max_tokens: 1000,
       messages: [
         {
           role: "system",
@@ -152,72 +154,70 @@ Include: greeting, formal offer statement, role summary, compensation, start dat
 
 // ─── AI Scoring ───────────────────────────────────────────────────────────────
 
+// Shared scoring core — callable without auth middleware (e.g. on application submit)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function scoreApplicationCore(sb: any, applicationId: string, force = false): Promise<{ score: number; summary: string }> {
+  const { data: app, error } = await sb
+    .from("applications")
+    .select("id, cover_letter, ai_score, ai_summary, candidates(full_name, current_company, experience_years), jobs(title, description, requirements)")
+    .eq("id", applicationId)
+    .single();
+  if (error || !app) return { score: 0, summary: "" };
+
+  if (!force && app.ai_score != null) {
+    return { score: app.ai_score as number, summary: (app.ai_summary as string) ?? "" };
+  }
+
+  let key: string;
+  try { key = getKey(); } catch { return { score: 0, summary: "" }; }
+
+  const candidate = (app as unknown as { candidates: { full_name: string; current_company: string | null; experience_years: number | null } }).candidates;
+  const job = (app as unknown as { jobs: { title: string; description: string | null; requirements: string | null } }).jobs;
+
+  const res = await openaiRequest(key, {
+    temperature: 0,
+    max_tokens: 150,
+    response_format: { type: "json_object" },
+    messages: [
+      {
+        role: "system",
+        content: "You are an expert technical recruiter. Score candidate fit 0–100 and write a concise 2-sentence summary. Return strict JSON only: { \"score\": number, \"summary\": string }.",
+      },
+      {
+        role: "user",
+        content: `JOB\nTitle: ${job.title}\nDescription: ${cap(job.description, 600)}\nRequirements: ${cap(job.requirements, 500)}\n\nCANDIDATE\nName: ${candidate.full_name}\nCompany: ${candidate.current_company ?? "n/a"}\nExperience: ${candidate.experience_years ?? "n/a"} yrs\nCover letter: ${cap(app.cover_letter, 500) || "(none)"}`,
+      },
+    ],
+  });
+
+  if (!res.ok) return { score: 0, summary: "" };
+
+  const json = await res.json();
+  let parsed: { score?: number; summary?: string } = {};
+  try { parsed = JSON.parse(json.choices?.[0]?.message?.content ?? "{}"); } catch { /* ignore */ }
+  const score = Math.max(0, Math.min(100, Math.round(parsed.score ?? 0)));
+  const summary = parsed.summary ?? "";
+
+  await sb.from("applications").update({ ai_score: score, ai_summary: summary }).eq("id", applicationId);
+  return { score, summary };
+}
+
 const ScoreInput = z.object({
   applicationId: z.string().uuid(),
-  force: z.boolean().optional(), // rescore even if score already exists
+  force: z.boolean().optional(),
 });
 
 export const scoreApplication = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((d: unknown) => ScoreInput.parse(d))
   .handler(async ({ data, context }) => {
-    const { supabase } = context;
-    const { data: app, error } = await supabase
-      .from("applications")
-      .select("id, cover_letter, ai_score, ai_summary, candidates(full_name, current_company, experience_years), jobs(title, description, requirements)")
-      .eq("id", data.applicationId)
-      .single();
-    if (error || !app) throw new Error("Application not found");
-
-    // Return cached score unless force-rescore requested
-    if (!data.force && app.ai_score != null) {
-      return { score: app.ai_score, summary: app.ai_summary ?? "" };
-    }
-
-    const key = getKey();
-    const candidate = (app as unknown as { candidates: { full_name: string; current_company: string | null; experience_years: number | null } }).candidates;
-    const job = (app as unknown as { jobs: { title: string; description: string | null; requirements: string | null } }).jobs;
-
-    const res = await openaiRequest(key, {
-      messages: [
-        {
-          role: "system",
-          content: "You are an expert technical recruiter. Score candidate fit 0–100 and write a concise 2-sentence summary. Return strict JSON only: { \"score\": number, \"summary\": string }.",
-        },
-        {
-          role: "user",
-          content: `JOB
-Title: ${job.title}
-Description: ${cap(job.description, 1000)}
-Requirements: ${cap(job.requirements, 1000)}
-
-CANDIDATE
-Name: ${candidate.full_name}
-Current company: ${candidate.current_company ?? "n/a"}
-Years of experience: ${candidate.experience_years ?? "n/a"}
-Cover letter: ${cap(app.cover_letter, 1000) || "(none)"}`,
-        },
-      ],
-      response_format: { type: "json_object" },
-    });
-
-    if (!res.ok) {
-      const txt = await res.text();
-      throw new Error(`AI error ${res.status}: ${txt.slice(0, 200)}`);
-    }
-    const json = await res.json();
-    let parsed: { score?: number; summary?: string } = {};
-    try { parsed = JSON.parse(json.choices?.[0]?.message?.content ?? "{}"); } catch { /* ignore */ }
-    const score = Math.max(0, Math.min(100, Math.round(parsed.score ?? 0)));
-    const summary = parsed.summary ?? "";
-
-    await supabase.from("applications").update({ ai_score: score, ai_summary: summary }).eq("id", data.applicationId);
-    return { score, summary };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return scoreApplicationCore(context.supabase as any, data.applicationId, data.force ?? false);
   });
 
 // ─── Resume Parser ────────────────────────────────────────────────────────────
 
-const ParseInput = z.object({ resumeText: z.string().min(20).max(10000) });
+const ParseInput = z.object({ resumeText: z.string().min(20).max(6000) });
 
 export const parseResumeText = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -226,6 +226,9 @@ export const parseResumeText = createServerFn({ method: "POST" })
     const key = getKey();
 
     const res = await openaiRequest(key, {
+      temperature: 0,
+      max_tokens: 300,
+      response_format: { type: "json_object" },
       messages: [
         {
           role: "system",
@@ -238,7 +241,6 @@ Return only valid JSON — no markdown, no extra text.`,
           content: data.resumeText,
         },
       ],
-      response_format: { type: "json_object" },
     });
 
     if (!res.ok) throw new Error(`AI error ${res.status}`);
