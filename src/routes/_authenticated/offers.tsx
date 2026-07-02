@@ -47,69 +47,78 @@ export const sendOfferLetterFn = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((d: unknown) => SendOfferInput.parse(d))
   .handler(async ({ data, context }) => {
-    // Verify caller belongs to this org
-    const { data: role } = await context.supabase
-      .from("user_roles")
-      .select("role")
-      .eq("organization_id", data.organizationId)
-      .eq("user_id", context.userId)
-      .maybeSingle();
-    if (!role) throw new Error("Forbidden");
+    try {
+      // Verify caller belongs to this org
+      const { data: role } = await context.supabase
+        .from("user_roles")
+        .select("role")
+        .eq("organization_id", data.organizationId)
+        .eq("user_id", context.userId)
+        .maybeSingle();
+      if (!role) throw new Error("Forbidden");
 
-    const sb = createClient<Database>(
-      process.env.SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      { realtime: { transport: ws }, auth: { persistSession: false, autoRefreshToken: false } },
-    );
+      const sb = createClient<Database>(
+        process.env.SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!,
+        { realtime: { transport: ws }, auth: { persistSession: false, autoRefreshToken: false } },
+      );
 
-    // Verify the application belongs to this org (service role bypasses RLS)
-    const { data: appCheck } = await sb
-      .from("applications")
-      .select("organization_id")
-      .eq("id", data.applicationId)
-      .eq("organization_id", data.organizationId)
-      .maybeSingle();
-    if (!appCheck) throw new Error("Forbidden");
+      // Verify the application belongs to this org (service role bypasses RLS)
+      const { data: appCheck } = await sb
+        .from("applications")
+        .select("organization_id")
+        .eq("id", data.applicationId)
+        .eq("organization_id", data.organizationId)
+        .maybeSingle();
+      if (!appCheck) throw new Error("Forbidden");
 
-    // Fetch org SMTP
-    const { data: settings } = await sb
-      .from("organization_settings")
-      .select("smtp_config, smtp_enabled")
-      .eq("organization_id", data.organizationId)
-      .maybeSingle();
+      // Fetch org SMTP
+      const { data: settings } = await sb
+        .from("organization_settings")
+        .select("smtp_config, smtp_enabled")
+        .eq("organization_id", data.organizationId)
+        .maybeSingle();
 
-    if (!settings?.smtp_enabled || !settings.smtp_config) {
-      throw new Error("SMTP not configured. Go to Settings → Integrations to set up email.");
-    }
+      if (!settings?.smtp_enabled || !settings.smtp_config) {
+        throw new Error("SMTP not configured. Go to Settings → Integrations to set up email.");
+      }
 
-    const { decryptSmtpConfig } = await import("@/lib/smtp-decrypt");
-    const { sendSmtpEmail } = await import("@/lib/smtp");
-    const smtp = decryptSmtpConfig(settings.smtp_config as Record<string, unknown>);
-    if (!smtp.host || !smtp.username || !smtp.password) {
-      throw new Error("SMTP settings are incomplete. Please check Settings → Integrations.");
-    }
+      const { decryptSmtpConfig } = await import("@/lib/smtp-decrypt");
+      const { sendSmtpEmail } = await import("@/lib/smtp");
+      const smtp = decryptSmtpConfig(settings.smtp_config as Record<string, unknown>);
+      if (!smtp.host || !smtp.username || !smtp.password) {
+        throw new Error("SMTP settings are incomplete. Please check Settings → Integrations.");
+      }
 
-    const html = `
-      <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:620px;margin:0 auto;background:#fff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;">
-        <div style="background:#0f172a;padding:22px 32px;">
-          <span style="color:#fff;font-size:16px;font-weight:700;">Offer Letter</span>
+      const html = `
+        <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:620px;margin:0 auto;background:#fff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;">
+          <div style="background:#0f172a;padding:22px 32px;">
+            <span style="color:#fff;font-size:16px;font-weight:700;">Offer Letter</span>
+          </div>
+          <div style="padding:36px 32px;">
+            <pre style="font-family:inherit;font-size:14px;line-height:1.8;white-space:pre-wrap;color:#1e293b;margin:0;">${escHtml(data.content)}</pre>
+          </div>
         </div>
-        <div style="padding:36px 32px;">
-          <pre style="font-family:inherit;font-size:14px;line-height:1.8;white-space:pre-wrap;color:#1e293b;margin:0;">${escHtml(data.content)}</pre>
-        </div>
-      </div>
-    `;
+      `;
 
-    await sendSmtpEmail(smtp, data.toEmail, `Formal Offer of Employment — ${data.jobTitle}`, html);
+      // Nodemailer throws custom SMTPError class instances — catch and normalize
+      try {
+        await sendSmtpEmail(smtp, data.toEmail, `Formal Offer of Employment — ${data.jobTitle}`, html);
+      } catch (smtpErr) {
+        throw new Error(smtpErr instanceof Error ? smtpErr.message : "Failed to send email via SMTP");
+      }
 
-    // Mark as sent in offer_letters table
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (sb as any)
-      .from("offer_letters")
-      .update({ sent_at: new Date().toISOString() })
-      .eq("application_id", data.applicationId);
+      // Mark as sent in offer_letters table
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (sb as any)
+        .from("offer_letters")
+        .update({ sent_at: new Date().toISOString() })
+        .eq("application_id", data.applicationId);
 
-    return {};
+      return {};
+    } catch (e) {
+      throw new Error(e instanceof Error ? e.message : "Failed to send offer letter");
+    }
   });
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -273,7 +282,7 @@ function Offers() {
         .from("offer_letters")
         .update({ sent_at: new Date().toISOString() })
         .eq("application_id", applicationId);
-      if (error) throw error;
+      if (error) throw new Error(error.message ?? "Failed to mark as sent");
     },
     onSuccess: (_, applicationId) => {
       setLetters(prev => prev.map(l => l.applicationId === applicationId ? { ...l, sentAt: new Date().toISOString() } : l));

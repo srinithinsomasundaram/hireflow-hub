@@ -44,70 +44,81 @@ export const generateOfferLetter = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((d: unknown) => OfferInput.parse(d))
   .handler(async ({ data, context }) => {
-    const { supabase } = context;
+    // Top-level catch converts any non-plain class instance (fetch TypeError.cause,
+    // PostgrestError, etc.) into a plain Error that Seroval can always serialize.
+    try {
+      const { supabase } = context;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const sb = supabase as any;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const sb = supabase as any;
 
-    // Return cached letter unless force-regeneration is requested
-    if (!data.force) {
-      const { data: cached } = await sb
-        .from("offer_letters")
-        .select("id, content, candidates(full_name, email), applications(jobs(title))")
-        .eq("application_id", data.applicationId)
-        .maybeSingle();
-      if (cached?.content) {
-        const cand = cached.candidates as { full_name: string; email: string } | null;
-        const jobTitle = (cached.applications as { jobs: { title: string } | null } | null)?.jobs?.title ?? "";
-        return {
-          id: cached.id as string,
-          content: cached.content as string,
-          candidateName: cand?.full_name ?? "",
-          candidateEmail: cand?.email ?? "",
-          jobTitle,
-          fromCache: true,
-        };
+      // Return cached letter unless force-regeneration is requested
+      if (!data.force) {
+        const { data: cached } = await sb
+          .from("offer_letters")
+          .select("id, content, candidates(full_name, email), applications(jobs(title))")
+          .eq("application_id", data.applicationId)
+          .maybeSingle();
+        if (cached?.content) {
+          const rawCand = cached.candidates;
+          const cand = (Array.isArray(rawCand) ? rawCand[0] : rawCand) as { full_name: string; email: string } | null;
+          const rawApp = cached.applications;
+          const appObj = (Array.isArray(rawApp) ? rawApp[0] : rawApp) as { jobs: { title: string } | null } | null;
+          const jobTitle = appObj?.jobs?.title ?? "";
+          return {
+            id: String(cached.id ?? ""),
+            content: String(cached.content ?? ""),
+            candidateName: cand?.full_name ?? "",
+            candidateEmail: cand?.email ?? "",
+            jobTitle,
+            fromCache: true,
+          };
+        }
       }
-    }
 
-    const { data: app, error } = await supabase
-      .from("applications")
-      .select("id, candidate_id, organization_id, candidates(full_name, email, experience_years, current_company), jobs(title, description, requirements, location, employment_type, salary_min, salary_max, salary_currency)")
-      .eq("id", data.applicationId)
-      .single();
-    if (error || !app) throw new Error("Application not found");
+      const { data: app, error } = await supabase
+        .from("applications")
+        .select("id, candidate_id, organization_id, candidates(full_name, email, experience_years, current_company), jobs(title, description, requirements, location, employment_type, salary_min, salary_max, salary_currency)")
+        .eq("id", data.applicationId)
+        .single();
+      if (error || !app) throw new Error("Application not found");
 
-    const { data: org } = await supabase
-      .from("organizations")
-      .select("company_name")
-      .eq("id", app.organization_id)
-      .single();
+      const { data: org } = await supabase
+        .from("organizations")
+        .select("company_name")
+        .eq("id", app.organization_id)
+        .single();
 
-    const key = getKey();
+      const key = getKey();
 
-    const candidate = (app as unknown as { candidates: { full_name: string; email: string; experience_years: number | null; current_company: string | null } }).candidates;
-    const job = (app as unknown as { jobs: { title: string; description: string | null; requirements: string | null; location: string | null; employment_type: string; salary_min: number | null; salary_max: number | null; salary_currency: string | null } }).jobs;
-    const companyName = org?.company_name ?? "Our Company";
-    const currency = job.salary_currency ?? "USD";
-    const salaryLine = data.salary ||
-      (job.salary_min && job.salary_max ? `${currency} ${job.salary_min.toLocaleString()}–${job.salary_max.toLocaleString()}` :
-       job.salary_min ? `${currency} ${job.salary_min.toLocaleString()}` : "Competitive");
-    const startLine = data.startDate
-      ? new Date(data.startDate).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })
-      : "a mutually agreed date";
-    const tone = data.tone ?? "warm";
+      // Supabase can return FK joins as an object or single-element array depending on schema hints
+      const rawCand = (app as unknown as { candidates: unknown }).candidates;
+      const rawJob  = (app as unknown as { jobs: unknown }).jobs;
+      const candidate = (Array.isArray(rawCand) ? rawCand[0] : rawCand) as { full_name: string; email: string; experience_years: number | null; current_company: string | null } | null;
+      const job       = (Array.isArray(rawJob)  ? rawJob[0]  : rawJob)  as { title: string; description: string | null; requirements: string | null; location: string | null; employment_type: string; salary_min: number | null; salary_max: number | null; salary_currency: string | null } | null;
+      if (!candidate || !job) throw new Error("Application data incomplete");
 
-    const res = await openaiRequest(key, {
-      temperature: 0.3,
-      max_tokens: 1000,
-      messages: [
-        {
-          role: "system",
-          content: `You are an expert HR writer who drafts complete, professional offer letters. Write in a ${tone} tone. Never use placeholders — write the full letter as it would be sent. Sign off as "${companyName} Talent Acquisition".`,
-        },
-        {
-          role: "user",
-          content: `Write a complete offer letter using these details:
+      const companyName = org?.company_name ?? "Our Company";
+      const currency = job.salary_currency ?? "USD";
+      const salaryLine = data.salary ||
+        (job.salary_min && job.salary_max ? `${currency} ${job.salary_min.toLocaleString()}–${job.salary_max.toLocaleString()}` :
+         job.salary_min ? `${currency} ${job.salary_min.toLocaleString()}` : "Competitive");
+      const startLine = data.startDate
+        ? new Date(data.startDate).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })
+        : "a mutually agreed date";
+      const tone = data.tone ?? "warm";
+
+      const res = await openaiRequest(key, {
+        temperature: 0.3,
+        max_tokens: 1000,
+        messages: [
+          {
+            role: "system",
+            content: `You are an expert HR writer who drafts complete, professional offer letters. Write in a ${tone} tone. Never use placeholders — write the full letter as it would be sent. Sign off as "${companyName} Talent Acquisition".`,
+          },
+          {
+            role: "user",
+            content: `Write a complete offer letter using these details:
 
 Company: ${companyName}
 Candidate: ${candidate.full_name}
@@ -116,40 +127,44 @@ Compensation: ${salaryLine}
 Start date: ${startLine}${cap(job.description, 500) ? `\nRole overview: ${cap(job.description, 500)}` : ""}${cap(job.requirements, 400) ? `\nKey requirements: ${cap(job.requirements, 400)}` : ""}
 
 Include: greeting, formal offer statement, role summary, compensation, start date, acceptance instructions (reply within 5 business days), and a professional closing.`,
-        },
-      ],
-    });
+          },
+        ],
+      });
 
-    if (!res.ok) {
-      const txt = await res.text();
-      throw new Error(`AI error ${res.status}: ${txt.slice(0, 200)}`);
-    }
-    const json = await res.json();
-    const content = (json.choices?.[0]?.message?.content ?? "").trim();
+      if (!res.ok) {
+        const txt = await res.text().catch(() => "");
+        throw new Error(`AI error ${res.status}: ${txt.slice(0, 200)}`);
+      }
+      const json = await res.json();
+      const content = (json.choices?.[0]?.message?.content ?? "").trim();
 
-    const { data: saved, error: saveErr } = await sb
-      .from("offer_letters")
-      .upsert({
-        organization_id: app.organization_id,
-        application_id: data.applicationId,
-        candidate_id: app.candidate_id,
+      const { data: saved, error: saveErr } = await sb
+        .from("offer_letters")
+        .upsert({
+          organization_id: app.organization_id,
+          application_id: data.applicationId,
+          candidate_id: app.candidate_id,
+          content,
+          salary: data.salary ?? null,
+          start_date: data.startDate ?? null,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: "application_id" })
+        .select("id")
+        .single();
+      if (saveErr) throw new Error("Failed to save offer letter");
+
+      return {
+        id: String((saved as { id: string } | null)?.id ?? ""),
         content,
-        salary: data.salary ?? null,
-        start_date: data.startDate ?? null,
-        updated_at: new Date().toISOString(),
-      }, { onConflict: "application_id" })
-      .select("id")
-      .single();
-    if (saveErr) throw new Error("Failed to save offer letter");
-
-    return {
-      id: (saved as { id: string }).id,
-      content,
-      candidateName: candidate.full_name,
-      candidateEmail: candidate.email,
-      jobTitle: job.title,
-      fromCache: false,
-    };
+        candidateName: candidate.full_name ?? "",
+        candidateEmail: candidate.email ?? "",
+        jobTitle: job.title ?? "",
+        fromCache: false,
+      };
+    } catch (e) {
+      // Re-throw as plain Error so Seroval can always serialize it
+      throw new Error(e instanceof Error ? e.message : "Failed to generate offer letter");
+    }
   });
 
 // ─── AI Scoring ───────────────────────────────────────────────────────────────
