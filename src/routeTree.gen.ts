@@ -18,6 +18,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as JoinTokenRouteImport } from './routes/join/$token'
 import { Route as AuthenticatedPipelineRouteImport } from './routes/_authenticated/pipeline'
+import { Route as AuthenticatedOrganizationRouteImport } from './routes/_authenticated/organization'
 import { Route as AuthenticatedOffersRouteImport } from './routes/_authenticated/offers'
 import { Route as AuthenticatedInterviewsRouteImport } from './routes/_authenticated/interviews'
 import { Route as AuthenticatedEmployeesRouteImport } from './routes/_authenticated/employees'
@@ -91,6 +92,12 @@ const AuthenticatedPipelineRoute = AuthenticatedPipelineRouteImport.update({
   path: '/pipeline',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedOrganizationRoute =
+  AuthenticatedOrganizationRouteImport.update({
+    id: '/organization',
+    path: '/organization',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedOffersRoute = AuthenticatedOffersRouteImport.update({
   id: '/offers',
   path: '/offers',
@@ -261,6 +268,7 @@ export interface FileRoutesByFullPath {
   '/employees': typeof AuthenticatedEmployeesRoute
   '/interviews': typeof AuthenticatedInterviewsRoute
   '/offers': typeof AuthenticatedOffersRoute
+  '/organization': typeof AuthenticatedOrganizationRoute
   '/pipeline': typeof AuthenticatedPipelineRoute
   '/join/$token': typeof JoinTokenRoute
   '/ai/resume-parser': typeof AuthenticatedAiResumeParserRoute
@@ -298,6 +306,7 @@ export interface FileRoutesByTo {
   '/employees': typeof AuthenticatedEmployeesRoute
   '/interviews': typeof AuthenticatedInterviewsRoute
   '/offers': typeof AuthenticatedOffersRoute
+  '/organization': typeof AuthenticatedOrganizationRoute
   '/pipeline': typeof AuthenticatedPipelineRoute
   '/join/$token': typeof JoinTokenRoute
   '/ai/resume-parser': typeof AuthenticatedAiResumeParserRoute
@@ -338,6 +347,7 @@ export interface FileRoutesById {
   '/_authenticated/employees': typeof AuthenticatedEmployeesRoute
   '/_authenticated/interviews': typeof AuthenticatedInterviewsRoute
   '/_authenticated/offers': typeof AuthenticatedOffersRoute
+  '/_authenticated/organization': typeof AuthenticatedOrganizationRoute
   '/_authenticated/pipeline': typeof AuthenticatedPipelineRoute
   '/join/$token': typeof JoinTokenRoute
   '/_authenticated/ai/resume-parser': typeof AuthenticatedAiResumeParserRoute
@@ -378,6 +388,7 @@ export interface FileRouteTypes {
     | '/employees'
     | '/interviews'
     | '/offers'
+    | '/organization'
     | '/pipeline'
     | '/join/$token'
     | '/ai/resume-parser'
@@ -415,6 +426,7 @@ export interface FileRouteTypes {
     | '/employees'
     | '/interviews'
     | '/offers'
+    | '/organization'
     | '/pipeline'
     | '/join/$token'
     | '/ai/resume-parser'
@@ -454,6 +466,7 @@ export interface FileRouteTypes {
     | '/_authenticated/employees'
     | '/_authenticated/interviews'
     | '/_authenticated/offers'
+    | '/_authenticated/organization'
     | '/_authenticated/pipeline'
     | '/join/$token'
     | '/_authenticated/ai/resume-parser'
@@ -555,6 +568,13 @@ declare module '@tanstack/react-router' {
       path: '/pipeline'
       fullPath: '/pipeline'
       preLoaderRoute: typeof AuthenticatedPipelineRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/organization': {
+      id: '/_authenticated/organization'
+      path: '/organization'
+      fullPath: '/organization'
+      preLoaderRoute: typeof AuthenticatedOrganizationRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/offers': {
@@ -791,6 +811,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedEmployeesRoute: typeof AuthenticatedEmployeesRoute
   AuthenticatedInterviewsRoute: typeof AuthenticatedInterviewsRoute
   AuthenticatedOffersRoute: typeof AuthenticatedOffersRoute
+  AuthenticatedOrganizationRoute: typeof AuthenticatedOrganizationRoute
   AuthenticatedPipelineRoute: typeof AuthenticatedPipelineRoute
   AuthenticatedAiResumeParserRoute: typeof AuthenticatedAiResumeParserRoute
   AuthenticatedAiScoringRoute: typeof AuthenticatedAiScoringRoute
@@ -813,6 +834,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedEmployeesRoute: AuthenticatedEmployeesRoute,
   AuthenticatedInterviewsRoute: AuthenticatedInterviewsRoute,
   AuthenticatedOffersRoute: AuthenticatedOffersRoute,
+  AuthenticatedOrganizationRoute: AuthenticatedOrganizationRoute,
   AuthenticatedPipelineRoute: AuthenticatedPipelineRoute,
   AuthenticatedAiResumeParserRoute: AuthenticatedAiResumeParserRoute,
   AuthenticatedAiScoringRoute: AuthenticatedAiScoringRoute,

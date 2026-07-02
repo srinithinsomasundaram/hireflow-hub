@@ -26,6 +26,10 @@ import { useCurrentOrg, useSwitchOrg } from "@/hooks/use-current-org";
 import { useAllOrgs } from "@/hooks/use-all-orgs";
 import { slugify } from "@/lib/slug";
 
+const organisation = [
+  { title: "Organisation", url: "/organization", icon: Building2 },
+];
+
 const main = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "Jobs", url: "/jobs", icon: ListChecks },
@@ -69,7 +73,7 @@ function StepDot({ n, label, active, done }: { n: number; label: string; active:
 
 // ─── Create Workspace Dialog ──────────────────────────────────────────────────
 
-function CreateWorkspaceDialog({
+export function CreateWorkspaceDialog({
   open,
   onClose,
 }: {
@@ -563,6 +567,24 @@ export function AppSidebar() {
       <SidebarSeparator />
 
       <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupLabel>Organisation</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {organisation.map((it) => (
+                <SidebarMenuItem key={it.url}>
+                  <SidebarMenuButton asChild isActive={isActive(it.url)}>
+                    <Link to={it.url} className="flex items-center gap-2">
+                      <it.icon className="h-4 w-4" />
+                      <span>{it.title}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
         <SidebarGroup>
           <SidebarGroupLabel>Workspace</SidebarGroupLabel>
           <SidebarGroupContent>
