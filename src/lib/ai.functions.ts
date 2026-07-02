@@ -6,10 +6,17 @@ const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
 const OPENAI_MODEL = "gpt-4o-mini";
 
 function getKey() {
-  const key = process.env.OPENAI_API_KEY;
-  if (!key) throw new Error("OPENAI_API_KEY is not configured");
+  const key = process.env.OPENAI_API_KEY?.trim();
+  if (!key) throw new Error("OpenAI API key is not configured. Add OPENAI_API_KEY to your environment variables.");
   return key;
 }
+
+export const checkAiConfig = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async () => {
+    const key = process.env.OPENAI_API_KEY?.trim();
+    return { configured: !!key };
+  });
 
 async function openaiRequest(key: string, body: object, retries = 3): Promise<Response> {
   for (let attempt = 0; attempt <= retries; attempt++) {
@@ -18,8 +25,14 @@ async function openaiRequest(key: string, body: object, retries = 3): Promise<Re
       headers: { "Content-Type": "application/json", "Authorization": `Bearer ${key}` },
       body: JSON.stringify({ model: OPENAI_MODEL, ...body }),
     });
-    if (res.status !== 429 || attempt === retries) return res;
-    await new Promise(r => setTimeout(r, 2000 * 2 ** attempt));
+    if (res.status === 401) {
+      throw new Error("OpenAI API key is invalid or expired. Please update OPENAI_API_KEY in your environment settings.");
+    }
+    if (res.status === 429 && attempt < retries) {
+      await new Promise(r => setTimeout(r, 2000 * 2 ** attempt));
+      continue;
+    }
+    return res;
   }
   throw new Error("AI service rate limit reached — please try again in a minute.");
 }

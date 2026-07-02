@@ -13,12 +13,12 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import {
   FileText, Sparkles, Send, Loader2, CheckCircle2, Clock, MailWarning, ArrowRight,
-  ChevronDown, ChevronUp, Mail, Copy, Check,
+  ChevronDown, ChevronUp, Copy, Check, KeyRound,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrentOrg } from "@/hooks/use-current-org";
-import { generateOfferLetter } from "@/lib/ai.functions";
+import { generateOfferLetter, checkAiConfig } from "@/lib/ai.functions";
 import type { Database } from "@/integrations/supabase/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -164,6 +164,12 @@ function Offers() {
   const [letters, setLetters] = useState<LetterResult[]>([]);
   const [generating, setGenerating] = useState(false);
   const [sendingIdx, setSendingIdx] = useState<number | null>(null);
+
+  const { data: aiConfigured } = useQuery({
+    queryKey: ["ai-configured"],
+    queryFn: () => checkAiConfig().then(r => r.configured),
+    staleTime: 1000 * 60 * 10,
+  });
 
   const { data: smtpReady } = useQuery({
     enabled: !!org?.id,
@@ -340,6 +346,20 @@ function Offers() {
         </p>
       </div>
 
+      {aiConfigured === false && (
+        <div className="flex items-center gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3">
+          <KeyRound className="h-4 w-4 shrink-0 text-red-600" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-red-800">OpenAI API key not configured</p>
+            <p className="text-xs text-red-700 mt-0.5">
+              Offer letter generation requires an OpenAI API key. Add{" "}
+              <code className="font-mono bg-red-100 px-1 rounded">OPENAI_API_KEY</code>{" "}
+              to your <code className="font-mono bg-red-100 px-1 rounded">.env</code> file, then restart the server.
+            </p>
+          </div>
+        </div>
+      )}
+
       {smtpReady === false && (
         <div className="flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
           <MailWarning className="h-4 w-4 shrink-0 text-amber-600" />
@@ -442,9 +462,10 @@ function Offers() {
           </div>
 
           <Button
-            onClick={generateAll}
-            disabled={generating || selected.size === 0}
+            onClick={() => generateAll()}
+            disabled={generating || selected.size === 0 || aiConfigured === false}
             className="gap-2 w-full sm:w-auto"
+            title={aiConfigured === false ? "OpenAI API key not configured" : undefined}
           >
             {generating
               ? <><Loader2 className="h-4 w-4 animate-spin" /> Generating…</>
