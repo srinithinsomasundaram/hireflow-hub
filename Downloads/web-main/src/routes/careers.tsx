@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import careersImg from "@/assets/careers-team.jpg";
 import { escapeHtml, sendResendEmail } from "@/lib/resend";
+import { createZohoContact } from "@/lib/zoho";
 import { buildSeoMeta } from "@/lib/seo";
 
 export const Route = createFileRoute("/careers")({
@@ -87,6 +88,8 @@ export const Route = createFileRoute("/careers")({
             <p>${safeMessage}</p>
             <p><strong>Resume:</strong> ${safeResumeName}</p>
           `;
+
+          await createZohoContact({ fullName, email, phone: phone || undefined, linkedin: linkedin || undefined, role, message });
 
           await sendResendEmail({
             from: "Yesp Studio No Reply <carrier@yespstudio.com>",
@@ -193,6 +196,22 @@ type Job = {
 
 const jobs: Job[] = [
   {
+    title: "Business Development Associate",
+    mission: "Own the full client acquisition cycle and build long-term revenue relationships for Yesp Studio.",
+    responsibilities: [
+      "Identify, prospect, and qualify new business opportunities across target verticals",
+      "Lead outreach via email, LinkedIn, and referral networks to generate a healthy pipeline",
+      "Run discovery calls, present Yesp Studio's offerings, and close new client engagements",
+      "Maintain accurate CRM records and report pipeline progress weekly",
+      "Collaborate with delivery and strategy teams to ensure smooth client onboarding",
+      "Build and nurture long-term client relationships to drive repeat business and referrals",
+    ],
+    output: "Signed client contracts and a growing revenue pipeline",
+    location: "Remote",
+    experience: "0–1 Year Experience",
+    type: "Full-Time",
+  },
+  {
     title: "Sales Intern",
     mission: "Help grow Yesp Studio's client base through outreach and relationship building.",
     responsibilities: [
@@ -209,16 +228,16 @@ const jobs: Job[] = [
     compensation: "Month 1 unpaid · Month 2+ paid + performance incentives · Min. 3-month commitment",
   },
   {
-    title: "AI Automation Intern",
-    mission: "Build and test AI-powered automation workflows for real client use cases.",
+    title: "Full Stack Intern",
+    mission: "Build and ship product features across the MERN stack at Yesp Studio.",
     responsibilities: [
-      "Assist in designing and building AI automation flows",
-      "Test and document AI tools and integrations",
-      "Research AI platforms and evaluate fit for client needs",
-      "Support the team with prompt engineering and workflow setup",
-      "Help troubleshoot and improve existing automations",
+      "Develop and maintain frontend and backend features using MongoDB, Express, React, and Node.js",
+      "Build RESTful APIs and integrate them with React frontends",
+      "Collaborate with senior engineers on architecture and code reviews",
+      "Write clean, tested, and well-documented code",
+      "Contribute to internal tools and client-facing products",
     ],
-    output: "Working automation workflows and documented processes",
+    output: "Shipped features and production-ready code",
     location: "Remote",
     experience: "No experience required",
     type: "Internship",
