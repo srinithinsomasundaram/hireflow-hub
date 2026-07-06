@@ -19,6 +19,7 @@ const staticPaths = [
   { path: "/leadership", priority: "0.6", changefreq: "monthly" },
   { path: "/enterprise", priority: "0.6", changefreq: "monthly" },
   { path: "/partner", priority: "0.7", changefreq: "monthly" },
+  { path: "/hireflow", priority: "0.8", changefreq: "monthly" },
   { path: "/resources", priority: "0.6", changefreq: "weekly" },
   { path: "/privacy", priority: "0.3", changefreq: "yearly" },
   { path: "/terms", priority: "0.3", changefreq: "yearly" },

@@ -11,6 +11,9 @@ import {
   ShoppingBag,
   Truck,
   ArrowUpRight,
+  BrainCircuit,
+  Timer,
+  Users,
 } from "lucide-react";
 import heroImg from "@/assets/hero-enterprise.jpg";
 import { Section, SectionHeader } from "@/components/site/Section";
@@ -115,16 +118,6 @@ const testimonials = [
   },
 ];
 
-const trustSignals = [
-  { label: "UK & India Incorporated" },
-  { label: "GDPR Compliant" },
-  { label: "Salesforce Partner" },
-  { label: "AWS Stack" },
-  { label: "Snowflake Ready" },
-  { label: "Senior-led Delivery" },
-  { label: "ISO-aligned Practices" },
-  { label: "India · UK · US · Germany" },
-];
 
 const howWeWork = [
   {
@@ -249,22 +242,6 @@ function Home() {
         </div>
       </Section>
 
-      {/* TRUST SIGNALS */}
-      <section className="border-b border-border py-8">
-        <div className="container-x">
-          <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-3">
-            {trustSignals.map((t) => (
-              <span
-                key={t.label}
-                className="text-xs font-medium text-muted-foreground tracking-wide flex items-center gap-2"
-              >
-                <span className="h-1 w-1 rounded-full bg-brand inline-block" />
-                {t.label}
-              </span>
-            ))}
-          </div>
-        </div>
-      </section>
 
       {/* HOW WE WORK */}
       <Section>
@@ -283,6 +260,83 @@ function Home() {
           ))}
         </div>
       </Section>
+
+      {/* HIREFLOW */}
+      <section className="bg-ink text-ink-foreground border-t border-hairline-ink">
+        <div className="container-x py-20 md:py-28">
+          <div className="grid lg:grid-cols-12 gap-12 items-center">
+            <div className="lg:col-span-6">
+              <div className="eyebrow-ink">Introducing HireFlow</div>
+              <h2 className="mt-5 font-display text-3xl md:text-5xl leading-[1.05] tracking-tight">
+                Hire smarter with AI-powered recruitment.
+              </h2>
+              <p className="mt-6 text-base md:text-lg text-ink-foreground/70 leading-relaxed">
+                HireFlow is Yesp Studio's dedicated recruitment platform — combining AI screening,
+                automated sourcing, and human expertise to help startups and growing businesses hire
+                qualified talent faster.
+              </p>
+              <div className="mt-10 flex flex-wrap gap-4">
+                <a
+                  href="https://hireflow.yesp.space/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 bg-ink-foreground text-ink px-6 py-3.5 text-sm font-medium hover:bg-ink-foreground/90 transition-colors"
+                >
+                  Explore HireFlow <ArrowUpRight className="h-4 w-4" />
+                </a>
+                <a
+                  href="https://hireflow.yesp.space/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 border border-ink-foreground/30 px-6 py-3.5 text-sm font-medium hover:border-ink-foreground/60 transition-colors"
+                >
+                  Book a Demo
+                </a>
+              </div>
+            </div>
+            <div className="lg:col-span-6">
+              <div className="grid gap-px bg-hairline-ink border border-hairline-ink sm:grid-cols-3">
+                {[
+                  {
+                    icon: BrainCircuit,
+                    title: "AI Screening",
+                    desc: "Intelligent candidate matching that cuts time-to-shortlist dramatically.",
+                  },
+                  {
+                    icon: Timer,
+                    title: "Faster Hiring",
+                    desc: "Curated shortlists within days, not weeks — without the agency markup.",
+                  },
+                  {
+                    icon: Users,
+                    title: "End-to-End",
+                    desc: "From job brief and sourcing through offer management and onboarding.",
+                  },
+                ].map((item) => (
+                  <div key={item.title} className="bg-ink p-7">
+                    <item.icon className="h-5 w-5 text-ink-foreground/60" />
+                    <h3 className="mt-4 font-display text-base leading-tight">{item.title}</h3>
+                    <p className="mt-2 text-sm text-ink-foreground/55 leading-relaxed">{item.desc}</p>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-px border border-hairline-ink bg-ink p-6 flex items-center justify-between gap-4">
+                <p className="text-sm text-ink-foreground/55">
+                  Serving technology, SaaS, healthcare, finance, and more.
+                </p>
+                <a
+                  href="https://hireflow.yesp.space/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="shrink-0 text-xs font-medium text-ink-foreground/60 hover:text-ink-foreground transition-colors flex items-center gap-1"
+                >
+                  hireflow.yesp.space <ArrowUpRight className="h-3 w-3" />
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
 
       {/* CASE STUDY */}
       <Section className="bg-card">

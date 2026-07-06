@@ -22,6 +22,7 @@ import { Route as LeadershipRouteImport } from './routes/leadership'
 import { Route as InsightsRouteImport } from './routes/insights'
 import { Route as IndustrySolutionsRouteImport } from './routes/industry-solutions'
 import { Route as IndustriesRouteImport } from './routes/industries'
+import { Route as HireflowRouteImport } from './routes/hireflow'
 import { Route as FounderRouteImport } from './routes/founder'
 import { Route as EnterpriseRouteImport } from './routes/enterprise'
 import { Route as ContactRouteImport } from './routes/contact'
@@ -102,6 +103,11 @@ const IndustrySolutionsRoute = IndustrySolutionsRouteImport.update({
 const IndustriesRoute = IndustriesRouteImport.update({
   id: '/industries',
   path: '/industries',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HireflowRoute = HireflowRouteImport.update({
+  id: '/hireflow',
+  path: '/hireflow',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FounderRoute = FounderRouteImport.update({
@@ -197,6 +203,7 @@ export interface FileRoutesByFullPath {
   '/contact': typeof ContactRoute
   '/enterprise': typeof EnterpriseRoute
   '/founder': typeof FounderRoute
+  '/hireflow': typeof HireflowRoute
   '/industries': typeof IndustriesRoute
   '/industry-solutions': typeof IndustrySolutionsRoute
   '/insights': typeof InsightsRouteWithChildren
@@ -227,6 +234,7 @@ export interface FileRoutesByTo {
   '/contact': typeof ContactRoute
   '/enterprise': typeof EnterpriseRoute
   '/founder': typeof FounderRoute
+  '/hireflow': typeof HireflowRoute
   '/industries': typeof IndustriesRoute
   '/industry-solutions': typeof IndustrySolutionsRoute
   '/leadership': typeof LeadershipRoute
@@ -258,6 +266,7 @@ export interface FileRoutesById {
   '/contact': typeof ContactRoute
   '/enterprise': typeof EnterpriseRoute
   '/founder': typeof FounderRoute
+  '/hireflow': typeof HireflowRoute
   '/industries': typeof IndustriesRoute
   '/industry-solutions': typeof IndustrySolutionsRoute
   '/insights': typeof InsightsRouteWithChildren
@@ -291,6 +300,7 @@ export interface FileRouteTypes {
     | '/contact'
     | '/enterprise'
     | '/founder'
+    | '/hireflow'
     | '/industries'
     | '/industry-solutions'
     | '/insights'
@@ -321,6 +331,7 @@ export interface FileRouteTypes {
     | '/contact'
     | '/enterprise'
     | '/founder'
+    | '/hireflow'
     | '/industries'
     | '/industry-solutions'
     | '/leadership'
@@ -351,6 +362,7 @@ export interface FileRouteTypes {
     | '/contact'
     | '/enterprise'
     | '/founder'
+    | '/hireflow'
     | '/industries'
     | '/industry-solutions'
     | '/insights'
@@ -383,6 +395,7 @@ export interface RootRouteChildren {
   ContactRoute: typeof ContactRoute
   EnterpriseRoute: typeof EnterpriseRoute
   FounderRoute: typeof FounderRoute
+  HireflowRoute: typeof HireflowRoute
   IndustriesRoute: typeof IndustriesRoute
   IndustrySolutionsRoute: typeof IndustrySolutionsRoute
   InsightsRoute: typeof InsightsRouteWithChildren
@@ -489,6 +502,13 @@ declare module '@tanstack/react-router' {
       path: '/industries'
       fullPath: '/industries'
       preLoaderRoute: typeof IndustriesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/hireflow': {
+      id: '/hireflow'
+      path: '/hireflow'
+      fullPath: '/hireflow'
+      preLoaderRoute: typeof HireflowRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/founder': {
@@ -658,6 +678,7 @@ const rootRouteChildren: RootRouteChildren = {
   ContactRoute: ContactRoute,
   EnterpriseRoute: EnterpriseRoute,
   FounderRoute: FounderRoute,
+  HireflowRoute: HireflowRoute,
   IndustriesRoute: IndustriesRoute,
   IndustrySolutionsRoute: IndustrySolutionsRoute,
   InsightsRoute: InsightsRouteWithChildren,
