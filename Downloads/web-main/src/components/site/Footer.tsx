@@ -33,6 +33,7 @@ const cols = [
       ["Resources", "/resources"],
       ["Brand", "/brand"],
       ["Enterprise", "/enterprise"],
+      ["Partner Program", "/partner"],
       ["Careers", "/careers"],
       ["Case Studies", "/case-studies"],
       ["Insights", "/insights"],
