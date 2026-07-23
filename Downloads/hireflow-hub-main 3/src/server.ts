@@ -28,7 +28,7 @@ function buildCsp(nonce: string): string {
     `script-src 'self' 'nonce-${nonce}' https://cal.id`,
     "style-src 'self' 'unsafe-inline' https://cal.id",
     "img-src 'self' data: blob: https:",
-    `connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.openai.com https://cal.id${process.env.NODE_ENV !== "production" ? " ws://localhost:* wss://localhost:*" : ""}`,
+    `connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.openai.com https://cal.id${import.meta.env.DEV ? " ws://localhost:* wss://localhost:* wss://hireflow.yesp.space" : ""}`,
     "frame-src 'self' https://cal.id",
     "font-src 'self' data:",
     "worker-src blob:",
